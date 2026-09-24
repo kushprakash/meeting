@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-function runDeploymentScript() {
+$handleDeploy = function () {
     $fileInPublic = public_path('deploy.php');
     $fileInRoot = base_path('deploy.php');
     if (file_exists($fileInPublic)) {
@@ -12,24 +12,18 @@ function runDeploymentScript() {
         require $fileInRoot;
         exit;
     }
-}
+    abort(404);
+};
 
-Route::get('/', function () {
+Route::get('/', function () use ($handleDeploy) {
     if (request()->has('token')) {
-        runDeploymentScript();
+        $handleDeploy();
     }
     return view('welcome');
 });
 
-Route::get('/deploy', function () {
-    runDeploymentScript();
-    abort(404);
-});
-
-Route::get('/deploy.php', function () {
-    runDeploymentScript();
-    abort(404);
-});
+Route::get('/deploy', $handleDeploy);
+Route::get('/deploy.php', $handleDeploy);
 
 Route::get('/auth/{provider}/redirect', [App\Http\Controllers\Api\V1\SocialAuthController::class, 'redirectToProvider']);
 Route::get('/auth/{provider}/callback', [App\Http\Controllers\Api\V1\SocialAuthController::class, 'handleProviderCallback']);

@@ -1,6 +1,7 @@
 <?php
-// Secret Tokens to secure deployment url (supports meeting, cashbez and enexa tokens)
+// Secret Tokens to secure deployment url (supports vidbez, meeting, cashbez and enexa tokens)
 $valid_tokens = [
+    'vidbez_secure_token_9835',
     'meeting_secure_token_9835',
     'cashbez_secure_token_9835',
     'enexa_secure_token_9835'
@@ -33,9 +34,9 @@ if (!in_array($provided_token, $valid_tokens, true)) {
             <p>You must pass a valid security token in the URL to trigger deployment.</p>
             
             <p><strong>Click below or use this URL:</strong></p>
-            <p><code>https://<?php echo htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'meeting.enexaerp.com'); ?>/deploy.php?token=meeting_secure_token_9835</code></p>
+            <p><code>https://<?php echo htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'vidbez.com'); ?>/deploy.php?token=vidbez_secure_token_9835</code></p>
             
-            <a class="btn" href="deploy.php?token=meeting_secure_token_9835">Run Deployment Now</a>
+            <a class="btn" href="deploy.php?token=vidbez_secure_token_9835">Run Deployment Now</a>
 
             <div class="info-box">
                 <p style="margin: 0 0 8px 0; color: #94a3b8; font-size: 13px;"><strong>Optional parameters:</strong></p>
@@ -63,6 +64,7 @@ $possible_homes = [
     dirname($project_path), // parent of project directory (e.g. /home/user)
     dirname(dirname($project_path)),
     getenv('HOME'),
+    '/home/vidbez',
     '/home/meeting-app',
     sys_get_temp_dir()
 ];
@@ -117,9 +119,9 @@ if ($run_migrate) {
     $commands['Database Migrations'] = 'php artisan migrate --force';
 }
 
-echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Deployment Console</title>";
+echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Deployment Console - Vidbez</title>";
 echo "<style>body{font-family:monospace;background:#0d1117;color:#c9d1d9;padding:24px;} pre{background:#161b22;padding:12px;border-radius:6px;border:1px solid #30363d;white-space:pre-wrap;} hr{border-color:#30363d;}</style></head><body>";
-echo "<h2 style='color:#58a6ff;'>🚀 Live Deployment System - EnexaERP / Meeting</h2>";
+echo "<h2 style='color:#58a6ff;'>🚀 Live Deployment System - Vidbez</h2>";
 echo "<p style='color:#8b949e;'>Project Directory: <code>" . htmlspecialchars($project_path) . "</code> | Home: <code>" . htmlspecialchars($home_dir) . "</code></p>";
 echo "<hr>";
 

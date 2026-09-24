@@ -25,5 +25,9 @@ Route::get('/', function () use ($handleDeploy) {
 Route::get('/deploy', $handleDeploy);
 Route::get('/deploy.php', $handleDeploy);
 
+Route::get('/meeting/{uuid}', function () {
+    return view('welcome');
+});
+
 Route::get('/auth/{provider}/redirect', [App\Http\Controllers\Api\V1\SocialAuthController::class, 'redirectToProvider']);
 Route::get('/auth/{provider}/callback', [App\Http\Controllers\Api\V1\SocialAuthController::class, 'handleProviderCallback']);

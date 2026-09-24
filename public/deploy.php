@@ -108,9 +108,9 @@ $remote_repo = !empty($git_token)
 $commands = [
     'Git Safe Directory' => 'HOME=' . escapeshellarg($home_dir) . ' git config --global --add safe.directory "*" || true',
     'Remove Git Lock File' => 'rm -f .git/index.lock',
-    'Git Init & Remote Setup' => 'if [ ! -d .git ]; then git -c safe.directory="*" init && git -c safe.directory="*" remote add origin ' . escapeshellarg($remote_repo) . '; else git -c safe.directory="*" remote set-url origin ' . escapeshellarg($remote_repo) . '; fi',
+    'Git Init & Remote Setup' => 'if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then rm -rf .git && git -c safe.directory="*" init && git -c safe.directory="*" remote add origin ' . escapeshellarg($remote_repo) . '; else git -c safe.directory="*" remote set-url origin ' . escapeshellarg($remote_repo) . ' || (rm -rf .git && git -c safe.directory="*" init && git -c safe.directory="*" remote add origin ' . escapeshellarg($remote_repo) . '); fi',
     'Git Fetch & Force Reset' => 'rm -f .git/index.lock && (git -c safe.directory="*" fetch origin main || git -c safe.directory="*" fetch --all) && git -c safe.directory="*" reset --hard origin/main',
-    'Composer Install' => 'composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist',
+    'Composer Install' => 'if command -v composer >/dev/null 2>&1; then composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist; else php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');" && php composer-setup.php --quiet && php composer.phar install --no-dev --optimize-autoloader --no-interaction --prefer-dist && rm -f composer-setup.php composer.phar; fi',
     'NPM Build' => 'if [ -f node_modules/vite/bin/vite.js ] || [ -f node_modules/.bin/vite ]; then npm run build; else echo "Using pre-built assets from Git repository (public/build)"; fi',
     'Storage Link' => 'php artisan storage:link || true',
     'Clear Caches' => 'php artisan cache:clear && php artisan config:clear && php artisan route:clear && php artisan view:clear',

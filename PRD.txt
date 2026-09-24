@@ -1,0 +1,558 @@
+# 24. MEETING VISIBILITY & ACCESS CONTROL — CORE REQUIREMENT
+
+Har meeting create karte waqt host/admin ko meeting ka **Access Type** select karna hoga.
+
+## 24.1 Meeting Access Types
+
+### A. PRIVATE MEETING
+
+Private meeting me sirf wahi users join kar sakenge jinke email address meeting create karte waqt add/invite kiye gaye hain.
+
+Example:
+
+```text
+Meeting:
+"Private Training Session"
+
+Access:
+PRIVATE
+
+Invited Emails:
+user1@gmail.com
+user2@gmail.com
+user3@gmail.com
+```
+
+Result:
+
+```text
+user1@gmail.com  → ✓ Can Join
+user2@gmail.com  → ✓ Can Join
+user3@gmail.com  → ✓ Can Join
+
+other@gmail.com  → ✗ Cannot Join
+```
+
+Agar unauthorized user meeting link ke through join karne ki koshish karta hai:
+
+```text
+Access Denied
+You are not invited to this meeting.
+```
+
+### Private Meeting Rules
+
+* Email invitation mandatory
+* Only invited email can join
+* Meeting link alone is NOT sufficient
+* Laravel server-side email validation karega
+* User authentication required hogi
+* Invited email aur logged-in account ka email match hona chahiye
+* Host/admin invited users ko manage kar sakta hai
+* Invite revoke bhi kiya ja sakta hai
+
+---
+
+# 24.2 PUBLIC MEETING
+
+Public meeting me koi bhi user meeting link se join request bhej sakta hai.
+
+Lekin user **directly meeting me enter nahi karega**.
+
+Flow:
+
+```text
+User opens Meeting Link
+        ↓
+Login / User Identification
+        ↓
+Join Request
+        ↓
+Waiting / Approval Screen
+        ↓
+Host receives request
+        ↓
+Host Approves
+        ↓
+User enters Meeting
+```
+
+Host ke paas:
+
+```text
+Approve
+Reject
+Remove
+```
+
+options honge.
+
+---
+
+# 24.3 Public Meeting Example
+
+```text
+Meeting:
+"Public Webinar"
+
+Access:
+PUBLIC
+
+Approval:
+REQUIRED
+```
+
+User:
+
+```text
+User A
+   ↓
+Join Request
+   ↓
+Waiting for Host Approval
+```
+
+Host:
+
+```text
+Participant Requests
+
+┌─────────────────────────────┐
+│ User A                      │
+│ usera@gmail.com             │
+│                             │
+│ [Approve] [Reject]          │
+└─────────────────────────────┘
+```
+
+Approve ke baad:
+
+```text
+User A
+   ↓
+Approved
+   ↓
+LiveKit Room Join
+```
+
+---
+
+# 24.4 Public Meeting — Optional Approval Policy
+
+Meeting creation ke waqt:
+
+```text
+Public Meeting
+```
+
+ke saath approval policy configurable hogi:
+
+```text
+Approval Required = ON/OFF
+```
+
+Agar:
+
+```text
+Public
+Approval Required = ON
+```
+
+to host approval mandatory hai.
+
+Agar future version me:
+
+```text
+Public
+Approval Required = OFF
+```
+
+allow kiya jata hai, to authenticated/allowed users direct join kar sakenge.
+
+**Default:** Approval Required = ON.
+
+---
+
+# 24.5 Meeting Creation Settings
+
+Meeting create form me access section:
+
+```text
+ACCESS & PRIVACY
+
+○ Private
+○ Public
+
+If Private:
+    [Add Participant Email]
+    [Add Multiple Emails]
+    [Import Email List]
+
+If Public:
+    Approval Required: ON/OFF
+```
+
+---
+
+# 24.6 Database Requirements
+
+Meeting table me minimum:
+
+```text
+visibility
+approval_required
+```
+
+Example:
+
+```text
+visibility = private
+approval_required = false
+```
+
+or:
+
+```text
+visibility = public
+approval_required = true
+```
+
+Separate meeting participants/invitations table:
+
+```text
+meeting_participants
+```
+
+Suggested fields:
+
+```text
+id
+meeting_id
+user_id
+email
+role
+status
+invited_at
+approved_at
+rejected_at
+joined_at
+left_at
+approved_by
+created_at
+updated_at
+```
+
+Possible status:
+
+```text
+invited
+pending
+approved
+rejected
+joined
+left
+removed
+blocked
+```
+
+---
+
+# 24.7 Server-Side Access Validation
+
+Join API par Laravel complete access check karega.
+
+Example:
+
+```text
+POST /api/v1/meetings/{meeting}/join
+```
+
+Laravel checks:
+
+```text
+1. Meeting exists?
+2. Meeting active?
+3. Meeting time valid?
+4. User authenticated?
+5. Meeting private/public?
+6. If private → email invited?
+7. If public → approval required?
+8. If approval required → approved?
+9. User blocked/removed?
+10. User role/permission valid?
+11. Meeting capacity available?
+12. LiveKit permission valid?
+```
+
+Sab checks successful hone ke baad hi:
+
+```text
+LiveKit Token
+```
+
+generate hoga.
+
+---
+
+# 24.8 Important Security Rule
+
+**LiveKit room ka URL/room name mil jana meeting access ke liye sufficient nahi hoga.**
+
+User ko pehle Laravel authorization pass karna hoga.
+
+Correct flow:
+
+```text
+Flutter/Web
+     ↓
+Laravel Join API
+     ↓
+Access Validation
+     ↓
+Permission Validation
+     ↓
+LiveKit Token Generate
+     ↓
+LiveKit Room
+```
+
+Direct unauthorized LiveKit access prevent kiya jayega through proper token/grant configuration.
+
+---
+
+# 24.9 Host Approval Realtime
+
+Public meeting me join request host ko realtime milni chahiye.
+
+Architecture:
+
+```text
+Participant
+    ↓
+Laravel
+    ↓
+Database
+    ↓
+Laravel Reverb
+    ↓
+Host
+```
+
+Host approve kare:
+
+```text
+Host
+ ↓
+Laravel Approve API
+ ↓
+Database Update
+ ↓
+Reverb Event
+ ↓
+Participant
+ ↓
+LiveKit Join Token
+ ↓
+Meeting
+```
+
+Isse page refresh ki requirement nahi hogi.
+
+---
+
+# 24.10 Host Approval Controls
+
+Host ke paas:
+
+```text
+Pending Requests
+
+[Approve]
+[Reject]
+```
+
+Aur active participants ke liye:
+
+```text
+[Mute]
+[Stop Audio]
+[Stop Video]
+[Stop Screen Share]
+[Remove]
+[Block]
+```
+
+available honge according to meeting configuration and host permissions.
+
+---
+
+# 24.11 Private Meeting Invitation Management
+
+Host/admin meeting create hone ke baad bhi invited users manage kar sakega, according to permission:
+
+```text
+Add Email
+Remove Email
+Resend Invitation
+Revoke Invitation
+```
+
+Example:
+
+```text
+Meeting Participants
+
+✓ user1@gmail.com
+✓ user2@gmail.com
+✗ user3@gmail.com
+```
+
+Revoked user dobara join nahi kar sakega jab tak invitation restore/re-add na ho.
+
+---
+
+# 24.12 UI/UX
+
+Meeting create screen me privacy/access configuration simple aur professional hogi.
+
+Example:
+
+```text
+┌─────────────────────────────────────┐
+│ Meeting Access                      │
+│                                     │
+│  ◉ Private     ○ Public             │
+│                                     │
+│ Private meetings are available      │
+│ only to invited participants.       │
+│                                     │
+│ Participants                        │
+│ ┌─────────────────────────────────┐ │
+│ │ user@example.com              + │ │
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
+```
+
+Public select karne par:
+
+```text
+┌─────────────────────────────────────┐
+│ Meeting Access                      │
+│                                     │
+│  ○ Private     ◉ Public             │
+│                                     │
+│ ☑ Require host approval              │
+│                                     │
+│ Participants must be approved       │
+│ before entering the meeting.        │
+└─────────────────────────────────────┘
+```
+
+UI unnecessarily complex nahi hoga.
+
+---
+
+# 24.13 Integration With Meeting Feature Permissions
+
+Privacy/access aur feature permissions independent but compatible honge.
+
+Example:
+
+```text
+Meeting:
+PRIVATE
+
+Audio:
+ON
+
+Participant Mic:
+OFF
+
+Video:
+OFF
+
+Screen Share:
+OFF
+
+Chat:
+ON
+```
+
+Result:
+
+```text
+Only invited users
+        +
+Only approved/authorized access
+        +
+Listen + Chat only
+```
+
+Another example:
+
+```text
+Meeting:
+PUBLIC
+
+Approval:
+ON
+
+Host Audio:
+ON
+
+Participant Mic:
+OFF
+
+Participant Video:
+OFF
+
+Screen Share:
+OFF
+
+Chat:
+ON
+```
+
+Result:
+
+```text
+Anyone can request
+        ↓
+Host approves
+        ↓
+Participant joins
+        ↓
+Can listen + chat only
+```
+
+---
+
+# 24.14 PRD Completion Requirement
+
+This feature will not be marked `[x] Completed` until all of these are tested:
+
+```text
+[ ] Private meeting creation
+[ ] Email invitation
+[ ] Invited user can join
+[ ] Non-invited user rejected
+[ ] Public meeting creation
+[ ] Public join request
+[ ] Host receives realtime request
+[ ] Host approves
+[ ] Approved user joins
+[ ] Host rejects
+[ ] Rejected user cannot join
+[ ] Remove participant
+[ ] Block participant
+[ ] Meeting expiry check
+[ ] Direct unauthorized LiveKit access blocked
+[ ] Flutter testing
+[ ] Web testing
+[ ] API testing
+[ ] Security/negative testing
+[ ] PRD updated
+[x] Completed
+```
+
+**Golden rule:** Private/Public/Approval sirf frontend setting nahi hai; **Laravel authorization + database state + LiveKit token generation** tino levels par enforce hoga.

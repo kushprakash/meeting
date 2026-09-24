@@ -22,6 +22,8 @@ class MeetingController extends Controller
             'visibility' => 'required|in:private,public',
             'approval_required' => 'boolean',
             'starts_at' => 'nullable|date',
+            'ends_at' => 'nullable|date|after:starts_at',
+            'duration_minutes' => 'nullable|integer|min:1|max:1440',
             'max_participants' => 'nullable|integer|min:1',
             'allow_audio' => 'boolean',
             'allow_video' => 'boolean',
@@ -33,13 +35,20 @@ class MeetingController extends Controller
 
         $host = $request->user();
 
+        $startsAt = !empty($validated['starts_at']) ? \Carbon\Carbon::parse($validated['starts_at']) : now();
+        $durationMinutes = !empty($validated['duration_minutes']) ? (int)$validated['duration_minutes'] : 60; // Standard 60 mins default if not scheduled
+        $endsAt = !empty($validated['ends_at']) 
+            ? \Carbon\Carbon::parse($validated['ends_at']) 
+            : (clone $startsAt)->addMinutes($durationMinutes);
+
         $meeting = Meeting::create([
             'uuid' => Str::uuid()->toString(),
             'title' => $validated['title'],
             'host_id' => $host->id,
             'visibility' => $validated['visibility'],
             'approval_required' => $validated['approval_required'] ?? ($validated['visibility'] === 'public'),
-            'starts_at' => $validated['starts_at'] ?? null,
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
             'max_participants' => $validated['max_participants'] ?? null,
             'allow_audio' => $validated['allow_audio'] ?? true,
             'allow_video' => $validated['allow_video'] ?? true,
@@ -129,10 +138,25 @@ class MeetingController extends Controller
     {
         $meeting = Meeting::where('uuid', $uuid)->with(['host:id,name,email', 'participants.user:id,name,email'])->firstOrFail();
 
+        $now = now();
+        $isExpired = $meeting->ends_at ? $now->gt($meeting->ends_at) : false;
+        $isStarted = $meeting->starts_at ? $now->gte($meeting->starts_at) : true;
+        $remainingSeconds = ($meeting->ends_at && !$isExpired) ? (int)$now->diffInSeconds($meeting->ends_at) : 0;
+        $startsInSeconds = ($meeting->starts_at && !$isStarted) ? (int)$now->diffInSeconds($meeting->starts_at) : 0;
+
+        if ($isExpired && $meeting->status === 'active') {
+            $meeting->update(['status' => 'ended']);
+            $meeting->status = 'ended';
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => [
                 'meeting' => $meeting,
+                'is_expired' => $isExpired || $meeting->status === 'ended',
+                'is_started' => $isStarted,
+                'remaining_seconds' => $remainingSeconds,
+                'starts_in_seconds' => $startsInSeconds,
             ]
         ]);
     }

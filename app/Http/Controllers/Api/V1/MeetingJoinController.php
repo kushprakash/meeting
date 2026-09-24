@@ -60,15 +60,20 @@ class MeetingJoinController extends Controller
                 'status' => 'error',
                 'code' => 'MEETING_NOT_STARTED',
                 'message' => 'Meeting has not started yet.',
-                'starts_at' => $meeting->starts_at
+                'starts_at' => $meeting->starts_at,
+                'starts_in_seconds' => (int)$now->diffInSeconds($meeting->starts_at)
             ], 400);
         }
 
         if ($meeting->ends_at && $now->gt($meeting->ends_at)) {
+            if ($meeting->status === 'active') {
+                $meeting->update(['status' => 'ended']);
+            }
             return response()->json([
                 'status' => 'error',
                 'code' => 'MEETING_EXPIRED',
-                'message' => 'Meeting has ended.'
+                'message' => 'Meeting time has ended. Room is closed.',
+                'ends_at' => $meeting->ends_at
             ], 400);
         }
 

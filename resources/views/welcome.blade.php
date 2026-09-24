@@ -3629,6 +3629,19 @@
                 </div>
 
                 <div class="form-group">
+                    <label class="form-label"><i class="fa-solid fa-hourglass-half" style="color: var(--google-blue);"></i> Standard Meeting Duration (End Time)</label>
+                    <select id="mDurationMinutes" class="form-control" style="font-weight: 600;">
+                        <option value="15">15 Minutes</option>
+                        <option value="30">30 Minutes</option>
+                        <option value="60" selected>60 Minutes (Standard Default)</option>
+                        <option value="90">90 Minutes (1.5 Hours)</option>
+                        <option value="120">120 Minutes (2 Hours)</option>
+                        <option value="240">240 Minutes (4 Hours)</option>
+                    </select>
+                    <small style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-top: 0.25rem;">Meeting will automatically close & clear localStorage when this time limit is reached.</small>
+                </div>
+
+                <div class="form-group">
                     <label class="form-label">Meeting Access Type</label>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <label style="border: 2px solid var(--google-blue); background: var(--google-blue-bg); padding: 1rem; border-radius: 0.5rem; cursor: pointer; display: block;" id="labelPrivate" onclick="setAccessMode('private')">
@@ -3816,12 +3829,20 @@
 
     <!-- Live Meeting Video Room Screen -->
     <div id="liveMeetingRoom">
+        <!-- Live Countdown Alert Warning Banner -->
+        <div id="liveCountdownAlertBanner" style="display: none; background: #dc2626; color: white; text-align: center; padding: 0.6rem 1rem; font-weight: 700; font-size: 0.9rem; z-index: 10001; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4); border-bottom: 1px solid rgba(255,255,255,0.2);">
+            <i class="fa-solid fa-triangle-exclamation"></i> <span id="liveCountdownAlertText">Meeting will close in 5 minutes!</span>
+        </div>
+
         <div class="meeting-top-bar">
             <div>
                 <div style="font-weight: 600; font-size: 1.1rem;" id="liveRoomTitle">Meeting Room</div>
                 <div style="font-size: 0.8rem; color: #9ca3af;" id="liveRoomSub">LiveKit Token Verified</div>
             </div>
-            <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="g-time-display" id="liveCountdownDisplay" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #f87171; font-weight: 700;">
+                    <i class="fa-solid fa-clock"></i> <span id="liveCountdownTimerText">--:--:--</span>
+                </div>
                 <button class="btn-google-outline" style="color: white; border-color: rgba(255,255,255,0.2);" onclick="copyRoomLink()"><i class="fa-solid fa-copy"></i> Copy Link</button>
             </div>
         </div>
@@ -4244,8 +4265,11 @@
                         applyBranding(data.data.setting);
                     }
 
-                    // Keep current view or default to landing page
-                    if (!currentPortalView) {
+                    // Check if pending or active meeting exists in localStorage upon login
+                    const pendingUuid = localStorage.getItem('pending_meeting_uuid') || localStorage.getItem('active_meeting_uuid');
+                    if (pendingUuid) {
+                        joinMeetingByUuid(pendingUuid);
+                    } else if (!currentPortalView) {
                         switchPortalView('landing');
                     } else {
                         switchPortalView(currentPortalView);
@@ -5013,12 +5037,14 @@
             const tab = document.getElementById('mTabType').value;
             const title = document.getElementById('mTitle').value;
             const startsAt = document.getElementById('mStartsAt').value;
+            const durationMinutes = document.getElementById('mDurationMinutes').value;
 
             const payload = {
                 title,
                 visibility: selectedAccessMode,
                 approval_required: document.getElementById('mApprovalToggle').checked,
                 starts_at: tab === 'schedule' && startsAt ? startsAt : null,
+                duration_minutes: durationMinutes,
                 invited_emails: selectedAccessMode === 'private' ? invitedEmailList : [],
             };
 
@@ -5060,6 +5086,7 @@
 
         function joinMeetingByUuid(uuid) {
             if (!authToken) {
+                localStorage.setItem('pending_meeting_uuid', uuid);
                 openAuthModal('signin');
                 return;
             }
@@ -5089,6 +5116,10 @@
                     const msg = `<div style="color: var(--google-red); font-size: 0.9rem; padding: 0.75rem; background: #fce8e6; border-radius: 0.5rem; margin-top: 1rem;"><i class="fa-solid fa-circle-xmark"></i> <strong>Access Denied:</strong> ${data.message}</div>`;
                     if (alertBox) alertBox.innerHTML = msg; else alert(data.message);
                 } else {
+                    if (data.code === 'MEETING_EXPIRED') {
+                        localStorage.removeItem('pending_meeting_uuid');
+                        localStorage.removeItem('active_meeting_uuid');
+                    }
                     const msg = `<div style="color: var(--google-red); font-size: 0.9rem; padding: 0.75rem; background: #fce8e6; border-radius: 0.5rem; margin-top: 1rem;"><i class="fa-solid fa-triangle-exclamation"></i> ${data.message}</div>`;
                     if (alertBox) alertBox.innerHTML = msg; else alert(data.message);
                 }
@@ -5125,9 +5156,68 @@
         let isScreenSharing = false;
         let activeRoomUuid = null;
         let inCallPendingTimer = null;
+        let liveInRoomTimerInterval = null;
+
+        function startLiveInRoomCountdown(roomUuid) {
+            if (liveInRoomTimerInterval) clearInterval(liveInRoomTimerInterval);
+
+            fetch(`/api/v1/meetings/${roomUuid}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.data?.remaining_seconds !== undefined) {
+                    let remainingSec = data.data.remaining_seconds;
+                    const alertBanner = document.getElementById('liveCountdownAlertBanner');
+                    const alertText = document.getElementById('liveCountdownAlertText');
+                    const timerText = document.getElementById('liveCountdownTimerText');
+
+                    if (data.data.is_expired) {
+                        localStorage.removeItem('pending_meeting_uuid');
+                        localStorage.removeItem('active_meeting_uuid');
+                        alert('Meeting duration has ended! Clearing localStorage and closing room.');
+                        leaveLiveRoom();
+                        return;
+                    }
+
+                    liveInRoomTimerInterval = setInterval(() => {
+                        if (remainingSec <= 0) {
+                            clearInterval(liveInRoomTimerInterval);
+                            liveInRoomTimerInterval = null;
+                            alert('Meeting duration expired! LocalStorage cleared and room closing.');
+                            localStorage.removeItem('pending_meeting_uuid');
+                            localStorage.removeItem('active_meeting_uuid');
+                            leaveLiveRoom();
+                            return;
+                        }
+
+                        remainingSec--;
+                        const hrs = String(Math.floor(remainingSec / 3600)).padStart(2, '0');
+                        const mins = String(Math.floor((remainingSec % 3600) / 60)).padStart(2, '0');
+                        const secs = String(remainingSec % 60).padStart(2, '0');
+                        if (timerText) timerText.innerText = `${hrs}:${mins}:${secs}`;
+
+                        // Countdown alert triggers
+                        if (remainingSec <= 300 && remainingSec > 60) {
+                            if (alertBanner) alertBanner.style.display = 'block';
+                            if (alertText) alertText.innerText = `Meeting Countdown Alert: Room will close in ${Math.ceil(remainingSec / 60)} minutes!`;
+                        } else if (remainingSec <= 60 && remainingSec > 0) {
+                            if (alertBanner) alertBanner.style.display = 'block';
+                            if (alertText) alertText.innerText = `Final Warning Alert: Meeting will close in ${remainingSec} seconds!`;
+                        } else {
+                            if (alertBanner) alertBanner.style.display = 'none';
+                        }
+                    }, 1000);
+                }
+            });
+        }
 
         async function launchLiveRoom(roomUuid, token, hostUrl) {
             activeRoomUuid = roomUuid;
+            localStorage.setItem('active_meeting_uuid', roomUuid);
+            localStorage.removeItem('pending_meeting_uuid');
+            startLiveInRoomCountdown(roomUuid);
+
             document.getElementById('liveMeetingRoom').style.display = 'flex';
             document.getElementById('liveRoomTitle').innerText = `Meeting Room`;
             document.getElementById('liveRoomSub').innerText = `UUID: ${roomUuid} • LiveKit Token Verified`;
@@ -5400,6 +5490,15 @@
                 clearInterval(inCallPendingTimer);
                 inCallPendingTimer = null;
             }
+            if (liveInRoomTimerInterval) {
+                clearInterval(liveInRoomTimerInterval);
+                liveInRoomTimerInterval = null;
+            }
+            localStorage.removeItem('pending_meeting_uuid');
+            localStorage.removeItem('active_meeting_uuid');
+            const alertBanner = document.getElementById('liveCountdownAlertBanner');
+            if (alertBanner) alertBanner.style.display = 'none';
+
             stopScreenSharing();
             if (activeLiveRoom) {
                 activeLiveRoom.disconnect();
@@ -5412,6 +5511,106 @@
             document.getElementById('liveVideoGrid').innerHTML = '';
             document.getElementById('liveMeetingRoom').style.display = 'none';
         }
+
+        // URL Path Deep-Link Routing & Expiry Management
+        let meetingCountdownInterval = null;
+
+        function checkPendingMeetingRedirect() {
+            const path = window.location.pathname;
+            const match = path.match(/\/meeting\/([a-f0-9\-]+)/i);
+            let targetUuid = match ? match[1] : localStorage.getItem('pending_meeting_uuid');
+
+            if (targetUuid) {
+                localStorage.setItem('pending_meeting_uuid', targetUuid);
+                if (!authToken) {
+                    openAuthModal('signin');
+                } else {
+                    showMeetingDetailsModal(targetUuid);
+                }
+            }
+        }
+
+        function showMeetingDetailsModal(uuid) {
+            fetch(`/api/v1/meetings/${uuid}`, {
+                headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.data?.meeting) {
+                    const m = data.data.meeting;
+                    const isExpired = data.data.is_expired;
+                    let remainingSec = data.data.remaining_seconds || 0;
+
+                    if (isExpired || m.status === 'ended') {
+                        localStorage.removeItem('pending_meeting_uuid');
+                        alert(`Meeting Expired: "${m.title}" has already ended.`);
+                        return;
+                    }
+
+                    let container = document.getElementById('webMeetingDetailsOverlay');
+                    if (!container) {
+                        container = document.createElement('div');
+                        container.id = 'webMeetingDetailsOverlay';
+                        container.style.cssText = "position: fixed; inset: 0; background: rgba(11, 25, 76, 0.85); backdrop-filter: blur(8px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1.5rem;";
+                        document.body.appendChild(container);
+                    }
+
+                    container.style.display = 'flex';
+                    container.innerHTML = `
+                        <div style="background: #ffffff; border-radius: 1.25rem; max-width: 480px; width: 100%; padding: 2rem; box-shadow: 0 20px 40px rgba(0,0,0,0.3); text-align: center; position: relative;">
+                            <button onclick="closeMeetingDetailsOverlay()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.25rem; color: #64748b; cursor: pointer;">&times;</button>
+                            
+                            <div style="width: 64px; height: 64px; border-radius: 50%; background: #EBF4FF; color: #0E71EB; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 1rem;">
+                                <i class="fa-solid fa-video"></i>
+                            </div>
+
+                            <h2 style="font-size: 1.5rem; font-weight: 800; color: #0B194C; margin-bottom: 0.5rem;">${m.title}</h2>
+                            <p style="font-size: 0.88rem; color: #64748b; margin-bottom: 1.25rem;">Host: <strong>${m.host?.name || 'Meeting Host'}</strong></p>
+
+                            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem;">
+                                <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #94a3b8; margin-bottom: 0.3rem;">Meeting Countdown Alert</div>
+                                <div id="mTimerDisplay" style="font-size: 1.8rem; font-weight: 800; color: #0E71EB; font-family: monospace;">--:--:--</div>
+                                <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.3rem;">Status: <span style="color: #10B981; font-weight: 700;">● Active</span> | Access: <strong>${m.visibility.toUpperCase()}</strong></div>
+                            </div>
+
+                            <button onclick="startJoinFromDetails('${m.uuid}')" class="btn-main-primary" style="width: 100%; justify-content: center; padding: 0.85rem; font-size: 1rem;">
+                                <i class="fa-solid fa-headset"></i> Connect to Meeting Now
+                            </button>
+                        </div>
+                    `;
+
+                    if (meetingCountdownInterval) clearInterval(meetingCountdownInterval);
+                    meetingCountdownInterval = setInterval(() => {
+                        if (remainingSec <= 0) {
+                            clearInterval(meetingCountdownInterval);
+                            localStorage.removeItem('pending_meeting_uuid');
+                            alert('Meeting time expired. Room is closing.');
+                            closeMeetingDetailsOverlay();
+                            return;
+                        }
+                        remainingSec--;
+                        const hrs = String(Math.floor(remainingSec / 3600)).padStart(2, '0');
+                        const mins = String(Math.floor((remainingSec % 3600) / 60)).padStart(2, '0');
+                        const secs = String(remainingSec % 60).padStart(2, '0');
+                        const timerEl = document.getElementById('mTimerDisplay');
+                        if (timerEl) timerEl.innerText = `${hrs}:${mins}:${secs}`;
+                    }, 1000);
+                }
+            });
+        }
+
+        function closeMeetingDetailsOverlay() {
+            const el = document.getElementById('webMeetingDetailsOverlay');
+            if (el) el.style.display = 'none';
+            if (meetingCountdownInterval) clearInterval(meetingCountdownInterval);
+        }
+
+        function startJoinFromDetails(uuid) {
+            closeMeetingDetailsOverlay();
+            joinMeetingByUuid(uuid);
+        }
+
+        window.addEventListener('DOMContentLoaded', checkPendingMeetingRedirect);
     </script>
 </body>
 </html>

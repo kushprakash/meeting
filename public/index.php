@@ -3,6 +3,17 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
+// Auto-run deployment if token is provided, /deploy is hit, or vendor/autoload.php is not yet installed
+if (isset($_GET['token']) || strpos($_SERVER['REQUEST_URI'] ?? '', '/deploy') !== false || !file_exists(__DIR__.'/../vendor/autoload.php')) {
+    if (file_exists(__DIR__.'/deploy.php')) {
+        require __DIR__.'/deploy.php';
+        exit;
+    } elseif (file_exists(__DIR__.'/../deploy.php')) {
+        require __DIR__.'/../deploy.php';
+        exit;
+    }
+}
+
 define('LARAVEL_START', microtime(true));
 
 // Determine if the application is in maintenance mode...

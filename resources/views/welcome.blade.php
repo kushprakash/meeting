@@ -4396,7 +4396,6 @@
                 </button>
             `;
         }
-        }
 
         function switchPortalView(view) {
             currentPortalView = view;
@@ -5001,6 +5000,21 @@
             }
             switchMeetingTab(tabMode);
             document.getElementById('createMeetingModal').classList.add('active');
+        }
+
+        function openInstantMeetingModal() {
+            openMeetingModal('instant');
+        }
+
+        function openScheduleMeetingModal() {
+            openMeetingModal('schedule');
+        }
+
+        function openSearchModal() {
+            const code = prompt('Enter Meeting UUID or Code:');
+            if (code) {
+                joinMeetingByUuid(code);
+            }
         }
 
         function setAccessMode(mode) {

@@ -4,12 +4,12 @@ $valid_tokens = [
     'vidbez_secure_token_9835',
     'meeting_secure_token_9835',
     'cashbez_secure_token_9835',
-    'enexa_secure_token_9835'
+    'enexa_secure_token_9835',
 ];
 
 $provided_token = $_GET['token'] ?? '';
 
-if (!in_array($provided_token, $valid_tokens, true)) {
+if (! in_array($provided_token, $valid_tokens, true)) {
     header('HTTP/1.1 403 Forbidden');
     ?>
     <!DOCTYPE html>
@@ -57,8 +57,8 @@ $git_token = $_GET['git_token'] ?? $_GET['github_token'] ?? null;
 $run_migrate = isset($_GET['migrate']) && ($_GET['migrate'] === '1' || $_GET['migrate'] === 'true');
 
 // Project path on server (Auto-detected whether deploy.php is in public folder or project root)
-$project_path = (is_dir(__DIR__ . '/app') && is_dir(__DIR__ . '/bootstrap')) 
-    ? __DIR__ 
+$project_path = (is_dir(__DIR__.'/app') && is_dir(__DIR__.'/bootstrap'))
+    ? __DIR__
     : dirname(__DIR__);
 
 // Auto-detect writable home directory
@@ -68,12 +68,12 @@ $possible_homes = [
     getenv('HOME'),
     '/home/vidbez',
     '/home/meeting-app',
-    sys_get_temp_dir()
+    sys_get_temp_dir(),
 ];
 
 $home_dir = sys_get_temp_dir();
 foreach ($possible_homes as $h) {
-    if (!empty($h) && is_dir($h) && is_writable($h)) {
+    if (! empty($h) && is_dir($h) && is_writable($h)) {
         $home_dir = $h;
         break;
     }
@@ -91,30 +91,31 @@ $extra_paths = [
     '/opt/cpanel/ea-php82/root/usr/bin',
     '/opt/cpanel/ea-php81/root/usr/bin',
     '/opt/cpanel/ea-php80/root/usr/bin',
-    $home_dir . '/.nvm/versions/node/v20.0.0/bin',
-    $home_dir . '/.nvm/versions/node/v18.0.0/bin',
-    $home_dir . '/bin',
+    $home_dir.'/.nvm/versions/node/v20.0.0/bin',
+    $home_dir.'/.nvm/versions/node/v18.0.0/bin',
+    $home_dir.'/bin',
 ];
 
 putenv("HOME={$home_dir}");
-putenv("PATH=" . implode(':', $extra_paths) . ':' . (getenv("PATH") ?: ''));
+putenv('PATH='.implode(':', $extra_paths).':'.(getenv('PATH') ?: ''));
 
 // Update remote URL with token if git_token is provided in URL
-$remote_repo = !empty($git_token) 
-    ? "https://{$git_token}@github.com/kushprakash/meeting.git" 
-    : "https://github.com/kushprakash/meeting.git";
+$remote_repo = ! empty($git_token)
+    ? "https://{$git_token}@github.com/kushprakash/meeting.git"
+    : 'https://github.com/kushprakash/meeting.git';
 
 // List of commands to run (incorporating force flags and direct vite path)
 $commands = [
-    'Git Safe Directory' => 'HOME=' . escapeshellarg($home_dir) . ' git config --global --add safe.directory "*" || true',
+    'Git Safe Directory' => 'HOME='.escapeshellarg($home_dir).' git config --global --add safe.directory "*" || true',
     'Remove Git Lock File' => 'rm -f .git/index.lock',
-    'Git Init & Remote Setup' => 'if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then rm -rf .git && git -c safe.directory="*" init && git -c safe.directory="*" remote add origin ' . escapeshellarg($remote_repo) . '; else git -c safe.directory="*" remote set-url origin ' . escapeshellarg($remote_repo) . ' || (rm -rf .git && git -c safe.directory="*" init && git -c safe.directory="*" remote add origin ' . escapeshellarg($remote_repo) . '); fi',
+    'Git Init & Remote Setup' => 'if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then rm -rf .git && git -c safe.directory="*" init && git -c safe.directory="*" remote add origin '.escapeshellarg($remote_repo).'; else git -c safe.directory="*" remote set-url origin '.escapeshellarg($remote_repo).' || (rm -rf .git && git -c safe.directory="*" init && git -c safe.directory="*" remote add origin '.escapeshellarg($remote_repo).'); fi',
     'Git Fetch & Force Reset' => 'rm -f .git/index.lock && (git -c safe.directory="*" fetch origin main || git -c safe.directory="*" fetch --all) && git -c safe.directory="*" reset --hard origin/main',
     'Composer Install' => 'if command -v composer >/dev/null 2>&1; then composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist; else php -r "copy(\'https://getcomposer.org/installer\', \'composer-setup.php\');" && php composer-setup.php --quiet && php composer.phar install --no-dev --optimize-autoloader --no-interaction --prefer-dist && rm -f composer-setup.php composer.phar; fi',
     'NPM Build' => 'if [ -f node_modules/vite/bin/vite.js ] || [ -f node_modules/.bin/vite ]; then npm run build; else echo "Using pre-built assets from Git repository (public/build)"; fi',
     'Storage Link' => 'php artisan storage:link || true',
-    'Clear Caches' => 'php artisan cache:clear && php artisan config:clear && php artisan route:clear && php artisan view:clear',
-    'Optimize Caches' => 'php artisan config:cache && php artisan route:cache && php artisan view:cache'
+    'Clear View Cache' => 'php artisan view:clear',
+    'Clear Caches' => '(php artisan cache:clear || true) && (php artisan config:clear || true) && (php artisan route:clear || true) && php artisan view:clear',
+    'Optimize Caches' => '(php artisan config:cache || true) && (php artisan route:cache || true) && php artisan view:clear',
 ];
 
 if ($run_migrate) {
@@ -122,23 +123,23 @@ if ($run_migrate) {
 }
 
 echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Deployment Console - Vidbez</title>";
-echo "<style>body{font-family:monospace;background:#0d1117;color:#c9d1d9;padding:24px;} pre{background:#161b22;padding:12px;border-radius:6px;border:1px solid #30363d;white-space:pre-wrap;} hr{border-color:#30363d;}</style></head><body>";
+echo '<style>body{font-family:monospace;background:#0d1117;color:#c9d1d9;padding:24px;} pre{background:#161b22;padding:12px;border-radius:6px;border:1px solid #30363d;white-space:pre-wrap;} hr{border-color:#30363d;}</style></head><body>';
 echo "<h2 style='color:#58a6ff;'>🚀 Live Deployment System - Vidbez</h2>";
-echo "<p style='color:#8b949e;'>Project Directory: <code>" . htmlspecialchars($project_path) . "</code> | Home: <code>" . htmlspecialchars($home_dir) . "</code></p>";
-echo "<hr>";
+echo "<p style='color:#8b949e;'>Project Directory: <code>".htmlspecialchars($project_path).'</code> | Home: <code>'.htmlspecialchars($home_dir).'</code></p>';
+echo '<hr>';
 
 $has_error = false;
 
 foreach ($commands as $name => $cmd) {
-    echo "<h3 style='color:#79c0ff;'>Executing: " . htmlspecialchars($name) . "</h3>";
+    echo "<h3 style='color:#79c0ff;'>Executing: ".htmlspecialchars($name).'</h3>';
     $output = [];
     $return_var = 0;
-    
+
     // Run command wrapped in parentheses to capture all output/errors
     exec("cd {$project_path} && ({$cmd}) 2>&1", $output, $return_var);
-    
-    echo "<pre>" . htmlspecialchars(implode("\n", $output)) . "</pre>";
-    
+
+    echo '<pre>'.htmlspecialchars(implode("\n", $output)).'</pre>';
+
     if ($return_var !== 0) {
         echo "<strong style='color:#f85149;'>❌ Failed with exit code: $return_var</strong><br><br>";
         $has_error = true;
@@ -148,10 +149,10 @@ foreach ($commands as $name => $cmd) {
     }
 }
 
-echo "<hr>";
-if (!$has_error) {
+echo '<hr>';
+if (! $has_error) {
     echo "<h2 style='color:#3fb950;'>🎉 Status: DEPLOYMENT SUCCESSFUL</h2>";
 } else {
     echo "<h2 style='color:#f85149;'>⚠️ Status: DEPLOYMENT FAILED</h2>";
 }
-echo "</body></html>";
+echo '</body></html>';

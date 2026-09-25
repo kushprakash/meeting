@@ -174,9 +174,10 @@ class MeetingController extends Controller
             $meeting->status = 'ended';
         }
 
-        // Filter active participants only (joined or approved)
+        // Filter active participants only (joined or approved with no left_at timestamp)
         $activeParticipants = MeetingParticipant::where('meeting_id', $meeting->id)
             ->whereIn('status', ['joined', 'approved'])
+            ->whereNull('left_at')
             ->with('user:id,name,email')
             ->get();
         $meeting->setRelation('participants', $activeParticipants);
@@ -209,9 +210,10 @@ class MeetingController extends Controller
             $meeting->update(['status' => 'ended']);
         }
 
-        // Active room participants (Joined or Approved only)
+        // Active room participants (Joined or Approved with no left_at timestamp)
         $activeParticipants = MeetingParticipant::where('meeting_id', $meeting->id)
             ->whereIn('status', ['joined', 'approved'])
+            ->whereNull('left_at')
             ->with('user:id,name,email')
             ->get();
 

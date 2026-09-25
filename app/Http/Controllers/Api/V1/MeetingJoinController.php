@@ -249,14 +249,21 @@ class MeetingJoinController extends Controller
     public function leave(Request $request, string $uuid): JsonResponse
     {
         $user = $request->user();
+        $emailInput = $request->input('email');
         $meeting = Meeting::where('uuid', $uuid)->first();
 
         if ($meeting) {
-            $participant = MeetingParticipant::where('meeting_id', $meeting->id)
-                ->where(function ($q) use ($user) {
+            $query = MeetingParticipant::where('meeting_id', $meeting->id);
+            if ($user) {
+                $query->where(function ($q) use ($user) {
                     $q->where('user_id', $user->id)
                       ->orWhere('email', strtolower($user->email));
-                })->first();
+                });
+            } elseif ($emailInput) {
+                $query->where('email', strtolower(trim($emailInput)));
+            }
+
+            $participant = $query->first();
 
             if ($participant && !in_array($participant->status, ['blocked', 'removed'])) {
                 $participant->update([

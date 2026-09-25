@@ -62,14 +62,18 @@ class LiveKitService
             $videoGrant['roomCreate'] = true;
         }
 
+        // Generate unique sub identity per connection session so multi-device users don't collide
+        $identity = (string) $user->id . '_' . substr(md5($user->id . '_' . microtime()), 0, 6);
+
         $payload = [
             'iss' => $this->apiKey,
-            'sub' => (string) $user->id,
+            'sub' => $identity,
             'name' => $user->name,
             'nbf' => $now,
             'exp' => $now + $ttl,
             'video' => $videoGrant,
             'metadata' => json_encode([
+                'user_id' => $user->id,
                 'email' => $user->email,
                 'role' => $role,
             ]),

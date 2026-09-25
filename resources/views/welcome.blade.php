@@ -5400,16 +5400,41 @@
             let connectedLiveKit = false;
             try {
                 if (window.LivekitClient) {
-                    const { Room } = LivekitClient;
-                    activeLiveRoom = new Room();
+                    const { Room, RoomEvent, Track } = LivekitClient;
+                    activeLiveRoom = new Room({
+                        adaptiveStream: true,
+                        dynacast: true,
+                    });
+
+                    // ── LISTEN FOR REMOTE AUDIO & VIDEO TRACKS ──
+                    activeLiveRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+                        console.log('Subscribed to remote track:', track.kind, participant.identity);
+                        if (track.kind === Track.Kind.Audio) {
+                            const el = track.attach();
+                            el.id = `remote-audio-${participant.sid}`;
+                            document.body.appendChild(el);
+                            el.play().catch(e => console.log('Remote audio playback notice:', e));
+                        } else if (track.kind === Track.Kind.Video) {
+                            createLiveKitTile(participant.identity, track, participant.sid);
+                        }
+                    });
+
+                    activeLiveRoom.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+                        track.detach().forEach(el => el.remove());
+                        const audioEl = document.getElementById(`remote-audio-${participant.sid}`);
+                        if (audioEl) audioEl.remove();
+                        const tile = document.getElementById(`livekitTileContainer-${participant.sid}`);
+                        if (tile) tile.remove();
+                    });
+
                     await activeLiveRoom.connect(hostUrl, token);
                     await activeLiveRoom.localParticipant.enableCameraAndMicrophone();
 
                     const camTrack = activeLiveRoom.localParticipant.getTrack('camera')?.videoTrack;
                     if (camTrack) {
-                        createLiveKitTile(activeLiveRoom.localParticipant.identity + ' (You)', camTrack);
-                        connectedLiveKit = true;
+                        createLiveKitTile(activeLiveRoom.localParticipant.identity + ' (You)', camTrack, 'local');
                     }
+                    connectedLiveKit = true;
                 }
             } catch (err) {
                 console.log('LiveKit connection note:', err.message);
@@ -5460,11 +5485,15 @@
             video.play().catch(err => console.log('Video play error:', err));
         }
 
-        function createLiveKitTile(label, track) {
+        function createLiveKitTile(label, track, sid = 'local') {
             const grid = document.getElementById('liveVideoGrid');
+            const tileId = `livekitTileContainer-${sid}`;
+            const existing = document.getElementById(tileId);
+            if (existing) existing.remove();
+
             const tile = document.createElement('div');
             tile.className = 'live-video-tile';
-            tile.id = 'livekitTileContainer';
+            tile.id = tileId;
 
             const video = track.attach();
             video.style.width = '100%';

@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
     
     <!-- LiveKit Client SDK -->
-    <script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.3/dist/livekit-client.umd.min.js"></script>
 
     <style>
         :root {
@@ -5399,8 +5399,9 @@
 
             let connectedLiveKit = false;
             try {
-                if (window.LivekitClient) {
-                    const { Room, RoomEvent, Track } = LivekitClient;
+                const LiveKitSDK = window.LivekitClient || window.LiveKitClient || window.LiveKit || window.livekitClient;
+                if (LiveKitSDK) {
+                    const { Room, RoomEvent, Track } = LiveKitSDK;
                     activeLiveRoom = new Room({
                         adaptiveStream: true,
                         dynacast: true,
@@ -5489,9 +5490,11 @@
                     }, { once: true });
 
                     connectedLiveKit = true;
+                } else {
+                    console.error('LiveKitSDK script not found on window object.');
                 }
             } catch (err) {
-                console.log('LiveKit connection note:', err.message);
+                console.error('LiveKit connection note:', err.message);
             }
 
             if (!connectedLiveKit) {
@@ -5666,12 +5669,17 @@
         function loadInCallPendingRequests() {
             if (!activeRoomUuid || !authToken) return;
             const container = document.getElementById('inCallPendingContainer');
+            if (!container) return;
 
             fetch(`/api/v1/meetings/${activeRoomUuid}/pending`, {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 403) return null;
+                return res.json();
+            })
             .then(data => {
+                if (!data) return;
                 if (data.status === 'success' && data.data?.pending_requests) {
                     const list = data.data.pending_requests;
                     if (list.length === 0) {

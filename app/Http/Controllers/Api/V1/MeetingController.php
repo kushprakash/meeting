@@ -108,8 +108,27 @@ class MeetingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        $now = now();
 
-        $hosted = Meeting::where('host_id', $user->id)->with('host:id,name,email')->latest()->get();
+        // Mark all past meetings whose ends_at has passed or created > 24 hours ago as ended
+        Meeting::where('status', 'active')
+            ->where(function ($q) use ($now) {
+                $q->where(function ($q2) use ($now) {
+                    $q2->whereNotNull('ends_at')->where('ends_at', '<', $now);
+                })->orWhere('created_at', '<', $now->copy()->subHours(24));
+            })
+            ->update(['status' => 'ended']);
+
+        $hosted = Meeting::where('host_id', $user->id)
+            ->with(['host:id,name,email', 'participants.user:id,name,email'])
+            ->latest()
+            ->get()
+            ->map(function ($m) use ($now) {
+                $m->is_expired = ($m->status === 'ended') 
+                    || ($m->ends_at && $now->gt($m->ends_at))
+                    || ($m->created_at && $now->diffInHours($m->created_at) >= 24);
+                return $m;
+            });
 
         $invitedMeetingIds = MeetingParticipant::where(function ($q) use ($user) {
             $q->where('user_id', $user->id)
@@ -118,9 +137,15 @@ class MeetingController extends Controller
 
         $participating = Meeting::whereIn('id', $invitedMeetingIds)
             ->where('host_id', '!=', $user->id)
-            ->with('host:id,name,email')
+            ->with(['host:id,name,email', 'participants.user:id,name,email'])
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($m) use ($now) {
+                $m->is_expired = ($m->status === 'ended') 
+                    || ($m->ends_at && $now->gt($m->ends_at))
+                    || ($m->created_at && $now->diffInHours($m->created_at) >= 24);
+                return $m;
+            });
 
         return response()->json([
             'status' => 'success',

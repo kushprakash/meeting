@@ -5575,7 +5575,7 @@
                         openAuthModal('signin');
                     }, 150);
                 } else {
-                    joinMeetingByUuid(targetUuid);
+                    showMeetingDetailsModal(targetUuid);
                 }
             }
         }
@@ -5611,40 +5611,23 @@
                             <button onclick="closeMeetingDetailsOverlay()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.25rem; color: #64748b; cursor: pointer;">&times;</button>
                             
                             <div style="width: 64px; height: 64px; border-radius: 50%; background: #EBF4FF; color: #0E71EB; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 1rem;">
-                                <i class="fa-solid fa-video"></i>
+                                <i class="fa-solid fa-headset"></i>
                             </div>
 
                             <h2 style="font-size: 1.5rem; font-weight: 800; color: #0B194C; margin-bottom: 0.5rem;">${m.title}</h2>
                             <p style="font-size: 0.88rem; color: #64748b; margin-bottom: 1.25rem;">Host: <strong>${m.host?.name || 'Meeting Host'}</strong></p>
 
                             <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem;">
-                                <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #94a3b8; margin-bottom: 0.3rem;">Meeting Countdown Alert</div>
-                                <div id="mTimerDisplay" style="font-size: 1.8rem; font-weight: 800; color: #0E71EB; font-family: monospace;">--:--:--</div>
-                                <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.3rem;">Status: <span style="color: #10B981; font-weight: 700;">● Active</span> | Access: <strong>${m.visibility.toUpperCase()}</strong></div>
+                                <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #94a3b8; margin-bottom: 0.3rem;">Meeting Ready</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: #0B194C; margin-bottom: 0.3rem;">Code: ${m.uuid}</div>
+                                <div style="font-size: 0.8rem; color: #64748b;">Status: <span style="color: #10B981; font-weight: 700;">● Active</span> | Access: <strong>${m.visibility.toUpperCase()}</strong></div>
                             </div>
 
-                            <button onclick="startJoinFromDetails('${m.uuid}')" class="btn-main-primary" style="width: 100%; justify-content: center; padding: 0.85rem; font-size: 1rem;">
-                                <i class="fa-solid fa-headset"></i> Connect to Meeting Now
+                            <button onclick="startJoinFromDetails('${m.uuid}')" class="btn-main-primary" style="width: 100%; justify-content: center; padding: 0.85rem; font-size: 1.05rem; font-weight: 800;">
+                                <i class="fa-solid fa-right-to-bracket"></i> Click to Join Meeting
                             </button>
                         </div>
                     `;
-
-                    if (meetingCountdownInterval) clearInterval(meetingCountdownInterval);
-                    meetingCountdownInterval = setInterval(() => {
-                        if (remainingSec <= 0) {
-                            clearInterval(meetingCountdownInterval);
-                            localStorage.removeItem('pending_meeting_uuid');
-                            alert('Meeting time expired. Room is closing.');
-                            closeMeetingDetailsOverlay();
-                            return;
-                        }
-                        remainingSec--;
-                        const hrs = String(Math.floor(remainingSec / 3600)).padStart(2, '0');
-                        const mins = String(Math.floor((remainingSec % 3600) / 60)).padStart(2, '0');
-                        const secs = String(remainingSec % 60).padStart(2, '0');
-                        const timerEl = document.getElementById('mTimerDisplay');
-                        if (timerEl) timerEl.innerText = `${hrs}:${mins}:${secs}`;
-                    }, 1000);
                 }
             });
         }
@@ -5660,7 +5643,21 @@
             joinMeetingByUuid(uuid);
         }
 
+        window.addEventListener('beforeunload', function () {
+            if (activeRoomUuid && authToken) {
+                navigator.sendBeacon(`/api/v1/meetings/${activeRoomUuid}/leave`);
+            }
+        });
+        window.addEventListener('pagehide', function () {
+            if (activeRoomUuid && authToken) {
+                navigator.sendBeacon(`/api/v1/meetings/${activeRoomUuid}/leave`);
+            }
+        });
+
         window.addEventListener('DOMContentLoaded', checkPendingMeetingRedirect);
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>

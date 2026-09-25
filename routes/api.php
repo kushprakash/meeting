@@ -33,6 +33,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/meetings', [MeetingController::class, 'index']);
         Route::post('/meetings', [MeetingController::class, 'store']);
         Route::get('/meetings/{uuid}', [MeetingController::class, 'show']);
+        Route::get('/meetings/{uuid}/room-activity', [MeetingController::class, 'roomActivity']);
         Route::post('/meetings/{uuid}/invite', [MeetingController::class, 'invite']);
         Route::delete('/meetings/{uuid}/invite/{participantId}', [MeetingController::class, 'revokeInvite']);
 

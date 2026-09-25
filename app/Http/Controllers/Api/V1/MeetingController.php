@@ -174,14 +174,68 @@ class MeetingController extends Controller
             $meeting->status = 'ended';
         }
 
+        // Filter active participants only (joined or approved)
+        $activeParticipants = MeetingParticipant::where('meeting_id', $meeting->id)
+            ->whereIn('status', ['joined', 'approved'])
+            ->with('user:id,name,email')
+            ->get();
+        $meeting->setRelation('participants', $activeParticipants);
+
         return response()->json([
             'status' => 'success',
             'data' => [
                 'meeting' => $meeting,
+                'active_participants' => $activeParticipants,
                 'is_expired' => $isExpired || $meeting->status === 'ended',
                 'is_started' => $isStarted,
                 'remaining_seconds' => $remainingSeconds,
                 'starts_in_seconds' => $startsInSeconds,
+            ]
+        ]);
+    }
+
+    /**
+     * Get real-time room activity & active participants only
+     */
+    public function roomActivity(Request $request, string $uuid): JsonResponse
+    {
+        $meeting = Meeting::where('uuid', $uuid)->with(['host:id,name,email'])->firstOrFail();
+        $user = $request->user();
+
+        $now = now();
+        $isExpired = ($meeting->status === 'ended') || ($meeting->ends_at && $now->gt($meeting->ends_at));
+
+        if ($isExpired && $meeting->status === 'active') {
+            $meeting->update(['status' => 'ended']);
+        }
+
+        // Active room participants (Joined or Approved only)
+        $activeParticipants = MeetingParticipant::where('meeting_id', $meeting->id)
+            ->whereIn('status', ['joined', 'approved'])
+            ->with('user:id,name,email')
+            ->get();
+
+        // Pending join requests for host
+        $pendingRequests = [];
+        $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
+
+        if ($isHost && $meeting->approval_required) {
+            $pendingRequests = MeetingParticipant::where('meeting_id', $meeting->id)
+                ->where('status', 'pending')
+                ->with('user:id,name,email')
+                ->get();
+        }
+
+        $meeting->setRelation('participants', $activeParticipants);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'meeting' => $meeting,
+                'active_participants' => $activeParticipants,
+                'pending_requests' => $pendingRequests,
+                'is_host' => $isHost,
+                'is_expired' => $isExpired,
             ]
         ]);
     }

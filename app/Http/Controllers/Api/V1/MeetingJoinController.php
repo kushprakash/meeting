@@ -145,8 +145,23 @@ class MeetingJoinController extends Controller
 
         // Check 7 & 8: Public Meeting & Approval Required Check
         if ($meeting->isPublic() && $meeting->approval_required) {
-            // Check if user has already been approved or joined
-            if (!$participant || !in_array($participant->status, ['approved', 'joined'])) {
+            // Check if user has ALREADY been approved by host (or approved_at set)
+            $isApprovedPreviously = $participant && (
+                $participant->approved_at !== null ||
+                $participant->approved_by !== null ||
+                in_array($participant->status, ['approved', 'joined', 'left'])
+            );
+
+            if (!$isApprovedPreviously) {
+                // If host already rejected this participant, return 403 JOIN_REJECTED!
+                if ($participant && $participant->status === 'rejected') {
+                    return response()->json([
+                        'status' => 'error',
+                        'code' => 'JOIN_REJECTED',
+                        'message' => 'Host rejected your request to join this meeting.'
+                    ], 403);
+                }
+
                 // If participant doesn't exist, create a pending join request
                 if (!$participant) {
                     $participant = MeetingParticipant::create([
@@ -165,15 +180,6 @@ class MeetingJoinController extends Controller
 
                 // Dispatch realtime event to host
                 \App\Events\JoinRequested::dispatch($participant);
-
-                // If request is rejected
-                if ($participant->status === 'rejected') {
-                    return response()->json([
-                        'status' => 'error',
-                        'code' => 'JOIN_REJECTED',
-                        'message' => 'Host rejected your request to join this meeting.'
-                    ], 403);
-                }
 
                 return response()->json([
                     'status' => 'pending',
@@ -217,6 +223,7 @@ class MeetingJoinController extends Controller
             $participant->update([
                 'status' => 'joined',
                 'joined_at' => now(),
+                'left_at' => null,
             ]);
         }
 
@@ -232,6 +239,36 @@ class MeetingJoinController extends Controller
                 'livekit_host' => $this->liveKitService->getHostUrl(),
                 'room' => $meeting->uuid,
             ]
+        ]);
+    }
+
+    /**
+     * Leave meeting (Participant quits room)
+     * POST /api/v1/meetings/{uuid}/leave
+     */
+    public function leave(Request $request, string $uuid): JsonResponse
+    {
+        $user = $request->user();
+        $meeting = Meeting::where('uuid', $uuid)->first();
+
+        if ($meeting) {
+            $participant = MeetingParticipant::where('meeting_id', $meeting->id)
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhere('email', strtolower($user->email));
+                })->first();
+
+            if ($participant && !in_array($participant->status, ['blocked', 'removed'])) {
+                $participant->update([
+                    'status' => 'left',
+                    'left_at' => now(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Left meeting room successfully'
         ]);
     }
 }

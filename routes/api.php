@@ -38,6 +38,7 @@ Route::prefix('v1')->group(function () {
 
         // Join & Access Control (12 Security Validation Checks)
         Route::post('/meetings/{uuid}/join', [MeetingJoinController::class, 'join']);
+        Route::post('/meetings/{uuid}/leave', [MeetingJoinController::class, 'leave']);
 
         // Host Controls & Approval Realtime
         Route::get('/meetings/{uuid}/pending', [HostApprovalController::class, 'pendingRequests']);

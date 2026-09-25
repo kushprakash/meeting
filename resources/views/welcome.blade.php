@@ -5522,6 +5522,13 @@
         }
 
         function leaveLiveRoom() {
+            if (activeRoomUuid && authToken) {
+                fetch(`/api/v1/meetings/${activeRoomUuid}/leave`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                }).catch(() => {});
+            }
+
             if (inCallPendingTimer) {
                 clearInterval(inCallPendingTimer);
                 inCallPendingTimer = null;

@@ -156,6 +156,11 @@ class MeetingJoinController extends Controller
                         'role' => 'participant',
                         'status' => 'pending',
                     ]);
+                } else if ($participant->status !== 'pending') {
+                    $participant->update([
+                        'user_id' => $user->id,
+                        'status' => 'pending',
+                    ]);
                 }
 
                 // Dispatch realtime event to host

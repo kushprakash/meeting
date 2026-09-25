@@ -5166,15 +5166,21 @@
                         'Authorization': `Bearer ${authToken}`
                     }
                 })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success' && data.data?.token) {
+                .then(res => res.json().then(data => ({ status: res.status, body: data })))
+                .then(res => {
+                    const data = res.body;
+                    if (res.status === 200 && data.status === 'success' && data.data?.token) {
                         clearInterval(waitingPollTimer);
                         closeModal('waitingRoomModal');
                         launchLiveRoom(data.data.room, data.data.token, data.data.livekit_host);
+                    } else if (res.status === 403 || data.code === 'JOIN_REJECTED' || data.code === 'ACCESS_DENIED') {
+                        clearInterval(waitingPollTimer);
+                        closeModal('waitingRoomModal');
+                        alert('Request Rejected: ' + (data.message || 'Host rejected your request to join this meeting.'));
                     }
-                });
-            }, 3000);
+                })
+                .catch(() => {});
+            }, 2000);
         }
 
         let localMediaStream = null;

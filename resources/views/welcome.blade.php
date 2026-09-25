@@ -5428,12 +5428,37 @@
                     });
 
                     await activeLiveRoom.connect(hostUrl, token);
-                    await activeLiveRoom.localParticipant.enableCameraAndMicrophone();
 
-                    const camTrack = activeLiveRoom.localParticipant.getTrack('camera')?.videoTrack;
-                    if (camTrack) {
-                        createLiveKitTile(activeLiveRoom.localParticipant.identity + ' (You)', camTrack, 'local');
+                    // Unlock browser audio playback engine
+                    if (activeLiveRoom.startAudio) {
+                        await activeLiveRoom.startAudio().catch(e => console.log('startAudio note:', e));
                     }
+
+                    // Enable microphone for audio room
+                    try {
+                        await activeLiveRoom.localParticipant.setMicrophoneEnabled(true);
+                    } catch (e) {
+                        console.log('Mic enable note:', e.message);
+                    }
+
+                    // Try enabling camera if available
+                    try {
+                        await activeLiveRoom.localParticipant.setCameraEnabled(true);
+                        const camTrack = activeLiveRoom.localParticipant.getTrack('camera')?.videoTrack;
+                        if (camTrack) {
+                            createLiveKitTile(activeLiveRoom.localParticipant.identity + ' (You)', camTrack, 'local');
+                        }
+                    } catch (e) {
+                        console.log('Camera optional note:', e.message);
+                    }
+
+                    // Unmute audio on first user touch/click if browser blocked autoplay
+                    document.addEventListener('click', () => {
+                        if (activeLiveRoom && activeLiveRoom.startAudio) {
+                            activeLiveRoom.startAudio();
+                        }
+                    }, { once: true });
+
                     connectedLiveKit = true;
                 }
             } catch (err) {

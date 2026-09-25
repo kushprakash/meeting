@@ -3823,7 +3823,7 @@
             <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5;">
                 You'll join the call when host approves your request.
             </p>
-            <button class="btn-google-outline" onclick="closeModal('waitingRoomModal')">Cancel Request</button>
+            <button class="btn-google-outline" onclick="cancelWaitingRequest()">Cancel Request</button>
         </div>
     </div>
 
@@ -3856,7 +3856,29 @@
             <button class="bar-btn" id="mCamBtn" onclick="toggleCam()" title="Toggle Camera"><i class="fa-solid fa-video"></i></button>
             <button class="bar-btn" id="mScreenBtn" onclick="toggleScreen()" title="Share Screen"><i class="fa-solid fa-desktop"></i></button>
             <button class="bar-btn" onclick="openInCallHostControls()" title="Host Controls & Requests"><i class="fa-solid fa-user-shield"></i></button>
-            <button class="bar-btn btn-hangup" onclick="leaveLiveRoom()" title="Leave Meeting"><i class="fa-solid fa-phone-slash"></i></button>
+            <button class="bar-btn btn-hangup" onclick="openLeaveConfirmModal()" title="Leave Meeting"><i class="fa-solid fa-phone-slash"></i></button>
+        </div>
+    </div>
+
+    <!-- Web Leave Confirmation Modal -->
+    <div class="g-modal" id="webLeaveConfirmModal">
+        <div class="g-modal-card" style="text-align: center; max-width: 440px; padding: 2rem;">
+            <button class="g-modal-close" onclick="closeModal('webLeaveConfirmModal')"><i class="fa-solid fa-xmark"></i></button>
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 1.25rem; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);">
+                <i class="fa-solid fa-phone-slash"></i>
+            </div>
+            <h2 style="font-weight: 800; font-size: 1.35rem; color: #0B194C; margin-bottom: 0.5rem;">Leave Meeting?</h2>
+            <p style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.75rem; line-height: 1.5;">
+                Are you sure you want to leave this meeting? You can re-join anytime using the meeting link.
+            </p>
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                <button class="btn-google-outline" style="flex: 1; padding: 0.65rem 1rem; font-weight: 600;" onclick="closeModal('webLeaveConfirmModal')">
+                    Stay in Room
+                </button>
+                <button class="btn-google" style="flex: 1; padding: 0.65rem 1rem; font-weight: 700; background: #dc2626; border-color: #dc2626; color: white;" onclick="confirmAndLeaveLiveRoom()">
+                    Leave Meeting
+                </button>
+            </div>
         </div>
     </div>
 
@@ -4272,10 +4294,10 @@
                         applyBranding(data.data.setting);
                     }
 
-                    // Check if pending or active meeting exists in localStorage upon login
+                    // Check if pending meeting in URL or localStorage upon login
                     const pendingUuid = localStorage.getItem('pending_meeting_uuid') || localStorage.getItem('active_meeting_uuid');
                     if (pendingUuid) {
-                        joinMeetingByUuid(pendingUuid);
+                        showMeetingDetailsModal(pendingUuid);
                     } else if (!currentPortalView) {
                         switchPortalView('landing');
                     } else {
@@ -5183,6 +5205,15 @@
             }, 2000);
         }
 
+        function cancelWaitingRequest() {
+            if (waitingPollTimer) {
+                clearInterval(waitingPollTimer);
+                waitingPollTimer = null;
+            }
+            closeModal('waitingRoomModal');
+        }
+
+
         let localMediaStream = null;
         let screenMediaStream = null;
         let isMicMuted = false;
@@ -5191,6 +5222,112 @@
         let activeRoomUuid = null;
         let inCallPendingTimer = null;
         let liveInRoomTimerInterval = null;
+        let roomActivityTimer = null;
+        let knownParticipantIds = new Set();
+
+        // ── REAL-TIME ROOM ACTIVITY POLLING ─────────────────────────────────
+        // Polls every 2s: syncs participant tiles (join/leave) and host pending requests
+        function startRoomActivityPolling(roomUuid) {
+            if (roomActivityTimer) clearInterval(roomActivityTimer);
+
+            const pollActivity = () => {
+                if (!activeRoomUuid || !authToken) return;
+                fetch(`/api/v1/meetings/${roomUuid}/room-activity`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status !== 'success') return;
+
+                    // ── EXPIRED CHECK ──
+                    if (data.data?.is_expired) {
+                        stopRoomActivityPolling();
+                        leaveLiveRoom();
+                        return;
+                    }
+
+                    const activeParticipants = data.data?.active_participants || [];
+
+                    // ── UPDATE PARTICIPANT TILES ──
+                    const currentIds = new Set(activeParticipants.map(p => String(p.id)));
+
+                    // Remove tiles for departed participants
+                    knownParticipantIds.forEach(pid => {
+                        if (!currentIds.has(pid)) {
+                            const tile = document.getElementById(`participant-tile-${pid}`);
+                            if (tile) tile.remove();
+                            knownParticipantIds.delete(pid);
+                        }
+                    });
+
+                    // Add tiles for new participants
+                    activeParticipants.forEach(p => {
+                        const pid = String(p.id);
+                        if (!knownParticipantIds.has(pid)) {
+                            // Don't duplicate self tile
+                            const selfName = currentUser?.name;
+                            const selfEmail = currentUser?.email;
+                            if (p.user && (p.user.id === currentUser?.id)) return;
+                            if (p.email && selfEmail && p.email.toLowerCase() === selfEmail.toLowerCase()) return;
+
+                            knownParticipantIds.add(pid);
+                            const displayName = p.user?.name || p.email || 'Participant';
+                            createParticipantAvatarTile(pid, displayName, p.role || 'participant');
+                        }
+                    });
+
+                    // ── HOST: SHOW PENDING REQUEST BADGE ──
+                    const pendingReqs = data.data?.pending_requests || [];
+                    const badge = document.getElementById('liveHostBadgeCount');
+                    if (badge) {
+                        badge.textContent = pendingReqs.length;
+                        badge.style.display = pendingReqs.length > 0 ? 'inline-flex' : 'none';
+                    }
+
+                    // ── HOST: AUTO-REFRESH In-Call Drawer IF OPEN ──
+                    const drawer = document.getElementById('inCallHostDrawer');
+                    if (drawer && drawer.classList.contains('active') && pendingReqs.length > 0) {
+                        loadInCallPendingRequests();
+                    }
+                })
+                .catch(() => {});
+            };
+
+            pollActivity(); // immediate first poll
+            roomActivityTimer = setInterval(pollActivity, 2000);
+        }
+
+        function stopRoomActivityPolling() {
+            if (roomActivityTimer) {
+                clearInterval(roomActivityTimer);
+                roomActivityTimer = null;
+            }
+            knownParticipantIds.clear();
+        }
+
+        function createParticipantAvatarTile(pid, name, role) {
+            const grid = document.getElementById('liveVideoGrid');
+            if (!grid) return;
+            if (document.getElementById(`participant-tile-${pid}`)) return; // already exists
+
+            const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+            const tile = document.createElement('div');
+            tile.className = 'live-video-tile';
+            tile.id = `participant-tile-${pid}`;
+            tile.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 700; margin: 0 auto 1rem auto; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);">
+                        ${initials}
+                    </div>
+                    <div style="font-weight: 600; font-size: 1rem; color: white;">${name}</div>
+                    <div style="font-size: 0.78rem; color: #9ca3af; margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.05em;">${role}</div>
+                </div>
+                <div style="position: absolute; bottom: 0.75rem; left: 0.75rem; background: rgba(0,0,0,0.65); color: white; padding: 0.3rem 0.7rem; border-radius: 0.375rem; font-size: 0.85rem; backdrop-filter: blur(4px);">
+                    <i class="fa-solid fa-microphone" style="color: #10b981;"></i> ${name}
+                </div>
+            `;
+            grid.appendChild(tile);
+        }
 
         function startLiveInRoomCountdown(roomUuid) {
             if (liveInRoomTimerInterval) clearInterval(liveInRoomTimerInterval);
@@ -5250,6 +5387,7 @@
             activeRoomUuid = roomUuid;
             localStorage.setItem('active_meeting_uuid', roomUuid);
             localStorage.removeItem('pending_meeting_uuid');
+            knownParticipantIds.clear();
             startLiveInRoomCountdown(roomUuid);
 
             document.getElementById('liveMeetingRoom').style.display = 'flex';
@@ -5269,7 +5407,7 @@
 
                     const camTrack = activeLiveRoom.localParticipant.getTrack('camera')?.videoTrack;
                     if (camTrack) {
-                        createLiveKitTile(activeLiveRoom.localParticipant.identity + ' (You - Host)', camTrack);
+                        createLiveKitTile(activeLiveRoom.localParticipant.identity + ' (You)', camTrack);
                         connectedLiveKit = true;
                     }
                 }
@@ -5280,11 +5418,14 @@
             if (!connectedLiveKit) {
                 try {
                     localMediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                    createCameraTile((currentUser?.name || 'Local User') + ' (Host Preview)', localMediaStream, 'localVideoTileContainer');
+                    createCameraTile((currentUser?.name || 'You') + ' (Preview)', localMediaStream, 'localVideoTileContainer');
                 } catch (e) {
-                    createAvatarTile((currentUser?.name || 'Local User') + ' (Host Audio Active)', 'Camera permission active');
+                    createAvatarTile((currentUser?.name || 'You') + ' (Audio Active)', 'Camera access needed');
                 }
             }
+
+            // Start real-time activity polling (syncs participant join/leave every 2s)
+            startRoomActivityPolling(roomUuid);
         }
 
         function createCameraTile(label, stream, tileId = 'localVideoTileContainer') {
@@ -5521,6 +5662,18 @@
             });
         }
 
+        function openLeaveConfirmModal() {
+            const modal = document.getElementById('webLeaveConfirmModal');
+            if (modal) {
+                modal.classList.add('active');
+            }
+        }
+
+        function confirmAndLeaveLiveRoom() {
+            closeModal('webLeaveConfirmModal');
+            leaveLiveRoom();
+        }
+
         function leaveLiveRoom() {
             if (activeRoomUuid && authToken) {
                 fetch(`/api/v1/meetings/${activeRoomUuid}/leave`, {
@@ -5529,6 +5682,8 @@
                 }).catch(() => {});
             }
 
+            // Stop all timers and polling
+            stopRoomActivityPolling();
             if (inCallPendingTimer) {
                 clearInterval(inCallPendingTimer);
                 inCallPendingTimer = null;
@@ -5537,10 +5692,16 @@
                 clearInterval(liveInRoomTimerInterval);
                 liveInRoomTimerInterval = null;
             }
+
+            activeRoomUuid = null;
+
             localStorage.removeItem('pending_meeting_uuid');
             localStorage.removeItem('active_meeting_uuid');
             const alertBanner = document.getElementById('liveCountdownAlertBanner');
             if (alertBanner) alertBanner.style.display = 'none';
+
+            // Close any open in-call modals
+            closeModal('inCallHostDrawer');
 
             stopScreenSharing();
             if (activeLiveRoom) {
@@ -5553,6 +5714,10 @@
             }
             document.getElementById('liveVideoGrid').innerHTML = '';
             document.getElementById('liveMeetingRoom').style.display = 'none';
+
+            if (window.location.pathname !== '/') {
+                window.history.pushState({}, document.title, '/');
+            }
         }
 
         // URL Path Deep-Link Routing & Expiry Management

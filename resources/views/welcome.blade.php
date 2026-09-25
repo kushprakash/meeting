@@ -5442,7 +5442,12 @@
                         if (tile) tile.remove();
                     });
 
-                    await activeLiveRoom.connect(hostUrl, token);
+                    let targetHostUrl = hostUrl;
+                    if (window.location.protocol === 'https:' && (targetHostUrl.includes('82.29.167.224') || targetHostUrl.includes('http:'))) {
+                        targetHostUrl = 'wss://' + window.location.host + '/livekit';
+                    }
+                    console.log('Connecting LiveKit to:', targetHostUrl);
+                    await activeLiveRoom.connect(targetHostUrl, token);
 
                     // Create Local Participant Avatar Circle (Always visible in audio mode)
                     createAvatarTile((currentUser?.name || activeLiveRoom.localParticipant.identity || 'You') + ' (You)', 'Audio Active', 'local');

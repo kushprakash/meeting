@@ -5444,7 +5444,7 @@
 
                     let targetHostUrl = hostUrl;
                     if (window.location.protocol === 'https:' && (targetHostUrl.includes('82.29.167.224') || targetHostUrl.includes('http:'))) {
-                        targetHostUrl = 'wss://' + window.location.host + '/livekit';
+                        targetHostUrl = 'wss://' + window.location.host + '/livekit/';
                     }
                     console.log('Connecting LiveKit to:', targetHostUrl);
                     await activeLiveRoom.connect(targetHostUrl, token);

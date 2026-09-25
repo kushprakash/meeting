@@ -5406,6 +5406,20 @@
                         dynacast: true,
                     });
 
+                    // ── LISTEN FOR REMOTE PARTICIPANTS JOIN/LEAVE ──
+                    activeLiveRoom.on(RoomEvent.ParticipantConnected, (participant) => {
+                        console.log('Participant connected:', participant.identity);
+                        createAvatarTile(participant.identity, 'Audio Active', participant.sid);
+                    });
+
+                    activeLiveRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+                        console.log('Participant disconnected:', participant.identity);
+                        const tile = document.getElementById(`livekitTileContainer-${participant.sid}`);
+                        if (tile) tile.remove();
+                        const audioEl = document.getElementById(`remote-audio-${participant.sid}`);
+                        if (audioEl) audioEl.remove();
+                    });
+
                     // ── LISTEN FOR REMOTE AUDIO & VIDEO TRACKS ──
                     activeLiveRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
                         console.log('Subscribed to remote track:', track.kind, participant.identity);
@@ -5414,6 +5428,7 @@
                             el.id = `remote-audio-${participant.sid}`;
                             document.body.appendChild(el);
                             el.play().catch(e => console.log('Remote audio playback notice:', e));
+                            createAvatarTile(participant.identity, 'Live Audio Active', participant.sid);
                         } else if (track.kind === Track.Kind.Video) {
                             createLiveKitTile(participant.identity, track, participant.sid);
                         }
@@ -5428,6 +5443,15 @@
                     });
 
                     await activeLiveRoom.connect(hostUrl, token);
+
+                    // Create Local Participant Avatar Circle (Always visible in audio mode)
+                    createAvatarTile((currentUser?.name || activeLiveRoom.localParticipant.identity || 'You') + ' (You)', 'Audio Active', 'local');
+
+                    // Sync all existing participants already in the room (e.g. Host who created room from app)
+                    activeLiveRoom.remoteParticipants.forEach((participant) => {
+                        console.log('Existing remote participant in room:', participant.identity);
+                        createAvatarTile(participant.identity, 'Audio Active', participant.sid);
+                    });
 
                     // Unlock browser audio playback engine
                     if (activeLiveRoom.startAudio) {
@@ -5470,12 +5494,9 @@
                     localMediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                     createCameraTile((currentUser?.name || 'You') + ' (Preview)', localMediaStream, 'localVideoTileContainer');
                 } catch (e) {
-                    createAvatarTile((currentUser?.name || 'You') + ' (Audio Active)', 'Camera access needed');
+                    createAvatarTile((currentUser?.name || 'You') + ' (Audio Active)', 'Camera access needed', 'local');
                 }
             }
-
-            // Start real-time activity polling (syncs participant join/leave every 2s)
-            startRoomActivityPolling(roomUuid);
         }
 
         function createCameraTile(label, stream, tileId = 'localVideoTileContainer') {
@@ -5534,23 +5555,32 @@
             grid.appendChild(tile);
         }
 
-        function createAvatarTile(label, subnote) {
+        function createAvatarTile(label, subnote, sid = 'local') {
             const grid = document.getElementById('liveVideoGrid');
-            const tile = document.createElement('div');
-            tile.className = 'live-video-tile';
+            const tileId = `livekitTileContainer-${sid}`;
+            let tile = document.getElementById(tileId);
+
+            if (!tile) {
+                tile = document.createElement('div');
+                tile.className = 'live-video-tile';
+                tile.id = tileId;
+                grid.appendChild(tile);
+            }
+
+            const cleanLabel = label.split('_')[0];
+
             tile.innerHTML = `
                 <div style="text-align: center;">
-                    <div style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #1a73e8, #4285f4); color: white; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1rem auto; box-shadow: 0 4px 15px rgba(26, 115, 232, 0.4);">
+                    <div style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #1a73e8, #4285f4); color: white; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1rem auto; box-shadow: 0 4px 15px rgba(26, 115, 232, 0.4); border: 3px solid #10b981;">
                         <i class="fa-solid fa-user"></i>
                     </div>
-                    <div style="font-weight: 600; font-size: 1rem; color: white;">${label}</div>
-                    <div style="font-size: 0.8rem; color: #9ca3af; margin-top: 0.25rem;">${subnote}</div>
+                    <div style="font-weight: 600; font-size: 1rem; color: white;">${cleanLabel}</div>
+                    <div style="font-size: 0.8rem; color: #10b981; margin-top: 0.25rem;"><i class="fa-solid fa-volume-high"></i> ${subnote}</div>
                 </div>
                 <div style="position: absolute; bottom: 0.75rem; left: 0.75rem; background: rgba(0,0,0,0.65); color: white; padding: 0.3rem 0.7rem; border-radius: 0.375rem; font-size: 0.85rem; backdrop-filter: blur(4px);">
-                    <i class="fa-solid fa-microphone" style="color: #10b981;"></i> ${label}
+                    <i class="fa-solid fa-microphone" style="color: #10b981;"></i> ${cleanLabel}
                 </div>
             `;
-            grid.appendChild(tile);
         }
 
         function toggleMic() {

@@ -210,6 +210,19 @@ class MeetingController extends Controller
             $meeting->update(['status' => 'ended']);
         }
 
+        // Check current requesting user's participant status
+        $myParticipant = null;
+        if ($user) {
+            $myParticipant = MeetingParticipant::where('meeting_id', $meeting->id)
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhere('email', strtolower($user->email));
+                })->first();
+        }
+
+        $myStatus = $myParticipant ? $myParticipant->status : null;
+        $isKickedOrRemoved = $myParticipant && in_array($myParticipant->status, ['removed', 'blocked', 'rejected']);
+
         // Active room participants (Joined or Approved with no left_at timestamp)
         $activeParticipants = MeetingParticipant::where('meeting_id', $meeting->id)
             ->whereIn('status', ['joined', 'approved'])
@@ -217,11 +230,11 @@ class MeetingController extends Controller
             ->with('user:id,name,email')
             ->get();
 
-        // Pending join requests for host
+        // Pending join requests for host - Always fetch if user is Host
         $pendingRequests = [];
         $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
 
-        if ($isHost && $meeting->approval_required) {
+        if ($isHost) {
             $pendingRequests = MeetingParticipant::where('meeting_id', $meeting->id)
                 ->where('status', 'pending')
                 ->with('user:id,name,email')
@@ -238,6 +251,8 @@ class MeetingController extends Controller
                 'pending_requests' => $pendingRequests,
                 'is_host' => $isHost,
                 'is_expired' => $isExpired,
+                'my_status' => $myStatus,
+                'is_kicked_or_removed' => $isKickedOrRemoved,
             ]
         ]);
     }

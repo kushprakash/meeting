@@ -21,11 +21,16 @@ class HostApprovalController extends Controller
     /**
      * Get pending join requests for host
      */
+    /**
+     * Get pending join requests for host
+     */
     public function pendingRequests(Request $request, string $uuid): JsonResponse
     {
         $meeting = Meeting::where('uuid', $uuid)->firstOrFail();
+        $user = $request->user();
         
-        if ($meeting->host_id !== $request->user()->id) {
+        $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
+        if (!$isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
@@ -50,13 +55,22 @@ class HostApprovalController extends Controller
         $meeting = Meeting::where('uuid', $uuid)->firstOrFail();
         $host = $request->user();
 
-        if ($meeting->host_id !== $host->id) {
+        $isHost = $host && ($meeting->host_id === $host->id || strtolower($meeting->host?->email) === strtolower($host->email));
+        if (!$isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
         $participant = MeetingParticipant::where('meeting_id', $meeting->id)
             ->where('id', $participantId)
             ->firstOrFail();
+
+        // Auto-link user_id if missing
+        if (!$participant->user_id && $participant->email) {
+            $targetUser = \App\Models\User::where('email', strtolower($participant->email))->first();
+            if ($targetUser) {
+                $participant->user_id = $targetUser->id;
+            }
+        }
 
         $participant->update([
             'status' => 'approved',
@@ -88,8 +102,10 @@ class HostApprovalController extends Controller
     public function reject(Request $request, string $uuid, int $participantId): JsonResponse
     {
         $meeting = Meeting::where('uuid', $uuid)->firstOrFail();
+        $user = $request->user();
 
-        if ($meeting->host_id !== $request->user()->id) {
+        $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
+        if (!$isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
@@ -117,8 +133,10 @@ class HostApprovalController extends Controller
     public function remove(Request $request, string $uuid, int $participantId): JsonResponse
     {
         $meeting = Meeting::where('uuid', $uuid)->firstOrFail();
+        $user = $request->user();
 
-        if ($meeting->host_id !== $request->user()->id) {
+        $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
+        if (!$isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
@@ -146,8 +164,10 @@ class HostApprovalController extends Controller
     public function block(Request $request, string $uuid, int $participantId): JsonResponse
     {
         $meeting = Meeting::where('uuid', $uuid)->firstOrFail();
+        $user = $request->user();
 
-        if ($meeting->host_id !== $request->user()->id) {
+        $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
+        if (!$isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 

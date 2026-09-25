@@ -110,13 +110,9 @@ class MeetingController extends Controller
         $user = $request->user();
         $now = now();
 
-        // Mark all past meetings whose ends_at has passed or created > 24 hours ago as ended
+        // Mark meetings created > 24 hours ago as ended
         Meeting::where('status', 'active')
-            ->where(function ($q) use ($now) {
-                $q->where(function ($q2) use ($now) {
-                    $q2->whereNotNull('ends_at')->where('ends_at', '<', $now);
-                })->orWhere('created_at', '<', $now->copy()->subHours(24));
-            })
+            ->where('created_at', '<', $now->copy()->subHours(24))
             ->update(['status' => 'ended']);
 
         $hosted = Meeting::where('host_id', $user->id)
@@ -125,7 +121,6 @@ class MeetingController extends Controller
             ->get()
             ->map(function ($m) use ($now) {
                 $m->is_expired = ($m->status === 'ended') 
-                    || ($m->ends_at && $now->gt($m->ends_at))
                     || ($m->created_at && $now->diffInHours($m->created_at) >= 24);
                 return $m;
             });
@@ -142,7 +137,6 @@ class MeetingController extends Controller
             ->get()
             ->map(function ($m) use ($now) {
                 $m->is_expired = ($m->status === 'ended') 
-                    || ($m->ends_at && $now->gt($m->ends_at))
                     || ($m->created_at && $now->diffInHours($m->created_at) >= 24);
                 return $m;
             });
@@ -164,10 +158,8 @@ class MeetingController extends Controller
         $meeting = Meeting::where('uuid', $uuid)->with(['host:id,name,email', 'participants.user:id,name,email'])->firstOrFail();
 
         $now = now();
-        $isExpired = $meeting->ends_at ? $now->gt($meeting->ends_at) : false;
+        $isExpired = ($meeting->status === 'ended') || ($meeting->created_at && $now->diffInHours($meeting->created_at) >= 24);
         $isStarted = $meeting->starts_at ? $now->gte($meeting->starts_at) : true;
-        $remainingSeconds = ($meeting->ends_at && !$isExpired) ? (int)$now->diffInSeconds($meeting->ends_at) : 0;
-        $startsInSeconds = ($meeting->starts_at && !$isStarted) ? (int)$now->diffInSeconds($meeting->starts_at) : 0;
 
         if ($isExpired && $meeting->status === 'active') {
             $meeting->update(['status' => 'ended']);
@@ -189,8 +181,8 @@ class MeetingController extends Controller
                 'active_participants' => $activeParticipants,
                 'is_expired' => $isExpired || $meeting->status === 'ended',
                 'is_started' => $isStarted,
-                'remaining_seconds' => $remainingSeconds,
-                'starts_in_seconds' => $startsInSeconds,
+                'remaining_seconds' => 3600,
+                'starts_in_seconds' => 0,
             ]
         ]);
     }
@@ -204,7 +196,7 @@ class MeetingController extends Controller
         $user = $request->user();
 
         $now = now();
-        $isExpired = ($meeting->status === 'ended') || ($meeting->ends_at && $now->gt($meeting->ends_at));
+        $isExpired = ($meeting->status === 'ended') || ($meeting->created_at && $now->diffInHours($meeting->created_at) >= 24);
 
         if ($isExpired && $meeting->status === 'active') {
             $meeting->update(['status' => 'ended']);

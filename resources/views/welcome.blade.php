@@ -4118,6 +4118,12 @@
             if (modal) {
                 switchAuthTab(mode);
                 modal.classList.add('active');
+
+                const pendingUuid = localStorage.getItem('pending_meeting_uuid');
+                const alertBox = document.getElementById('authAlert');
+                if (pendingUuid && alertBox) {
+                    alertBox.innerHTML = `<div style="color: var(--google-blue); font-size: 0.85rem; padding: 0.65rem 0.85rem; background: #e8f0fe; border: 1px solid #bfdbfe; border-radius: 0.5rem; margin-bottom: 0.75rem; text-align: center; font-weight: 600;"><i class="fa-solid fa-lock" style="margin-right: 0.4rem;"></i> Please Sign In or Create an Account to join meeting: <span style="font-family: monospace; color: #1e40af;">${pendingUuid}</span></div>`;
+                }
             }
         }
 
@@ -4952,7 +4958,7 @@
         }
 
         function copyMeetingLink(uuid) {
-            const fullUrl = `${window.location.origin}/?code=${uuid}`;
+            const fullUrl = `${window.location.origin}/meeting/${uuid}`;
             navigator.clipboard.writeText(fullUrl);
             alert(`Meeting Link Copied:\n${fullUrl}`);
         }
@@ -5085,6 +5091,12 @@
         }
 
         function joinMeetingByUuid(uuid) {
+            if (!uuid) return;
+            const linkMatch = String(uuid).match(/\/meeting\/([a-zA-Z0-9\-]+)/i);
+            if (linkMatch) {
+                uuid = linkMatch[1];
+            }
+
             if (!authToken) {
                 localStorage.setItem('pending_meeting_uuid', uuid);
                 openAuthModal('signin');
@@ -5381,8 +5393,10 @@
         }
 
         function copyRoomLink() {
-            navigator.clipboard.writeText(window.location.href);
-            alert('Meeting link copied to clipboard!');
+            const uuid = activeRoomUuid || localStorage.getItem('active_meeting_uuid');
+            const fullUrl = uuid ? `${window.location.origin}/meeting/${uuid}` : window.location.href;
+            navigator.clipboard.writeText(fullUrl);
+            alert(`Meeting link copied to clipboard:\n${fullUrl}`);
         }
 
         function openInCallHostControls() {
@@ -5517,15 +5531,20 @@
 
         function checkPendingMeetingRedirect() {
             const path = window.location.pathname;
-            const match = path.match(/\/meeting\/([a-f0-9\-]+)/i);
-            let targetUuid = match ? match[1] : localStorage.getItem('pending_meeting_uuid');
+            const match = path.match(/\/meeting\/([a-zA-Z0-9\-]+)/i);
+            const urlParams = new URLSearchParams(window.location.search);
+            const codeParam = urlParams.get('code');
+            let targetUuid = match ? match[1] : (codeParam || localStorage.getItem('pending_meeting_uuid'));
 
             if (targetUuid) {
+                if (codeParam) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
                 localStorage.setItem('pending_meeting_uuid', targetUuid);
                 if (!authToken) {
                     openAuthModal('signin');
                 } else {
-                    showMeetingDetailsModal(targetUuid);
+                    joinMeetingByUuid(targetUuid);
                 }
             }
         }

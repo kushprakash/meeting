@@ -2750,7 +2750,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 100;
+            z-index: 5000;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.2s ease;
@@ -3901,7 +3901,8 @@
             if (btn) btn.innerHTML = '<i class="fa-solid fa-bars"></i>';
         }
 
-        let authToken = localStorage.getItem('meeting_auth_token');
+        let rawToken = localStorage.getItem('meeting_auth_token');
+        let authToken = (rawToken && rawToken !== 'null' && rawToken !== 'undefined' && rawToken.trim() !== '') ? rawToken : null;
         let currentUser = null;
         let selectedAccessMode = 'private';
         let invitedEmailList = [];
@@ -4446,7 +4447,8 @@
             localStorage.removeItem('meeting_auth_token');
             authToken = null;
             currentUser = null;
-            location.reload();
+            renderHeaderAuth();
+            switchPortalView('landing');
         }
 
         // SUPER ADMIN
@@ -5542,7 +5544,9 @@
                 }
                 localStorage.setItem('pending_meeting_uuid', targetUuid);
                 if (!authToken) {
-                    openAuthModal('signin');
+                    setTimeout(() => {
+                        openAuthModal('signin');
+                    }, 150);
                 } else {
                     joinMeetingByUuid(targetUuid);
                 }

@@ -3,14 +3,46 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Send OTP email via matched Setting SMTP configuration
+     */
+    protected function sendOtpEmail(Request $request, User $user, string $otp): void
+    {
+        try {
+            $setting = Setting::getForRequest($request);
+            if ($setting) {
+                $setting->applySmtpConfig();
+            }
+
+            $appName = $setting->app_name ?? 'VidBez';
+
+            Mail::raw(
+                "Your 6-digit OTP verification code for {$appName} is: {$otp}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this verification code, please ignore this message.",
+                function ($message) use ($user, $appName, $otp) {
+                    $fromAddress = config('mail.from.address') ?: 'noreply@vidbez.com';
+                    $fromName = config('mail.from.name') ?: "{$appName} Support";
+
+                    $message->from($fromAddress, $fromName)
+                        ->to($user->email)
+                        ->subject("{$otp} is your {$appName} OTP Verification Code");
+                }
+            );
+        } catch (\Exception $e) {
+            Log::error("Failed to send OTP email to {$user->email}: " . $e->getMessage());
+        }
+    }
+
     /**
      * Register a new user account with OTP generation.
      */
@@ -41,9 +73,12 @@ class AuthController extends Controller
 
         $user = User::create($userData);
 
+        // Send OTP via SMTP
+        $this->sendOtpEmail($request, $user, $otp);
+
         return response()->json([
             'status' => 'pending_otp',
-            'message' => 'Registration successful! Please verify the 6-digit OTP code.',
+            'message' => 'Registration successful! 6-digit OTP code sent to your email.',
             'data' => [
                 'email' => $user->email,
                 'otp_demo' => $otp, // Exposed for UI testing demo convenience
@@ -127,9 +162,12 @@ class AuthController extends Controller
             'otp_expires_at' => now()->addMinutes(10),
         ]);
 
+        // Send OTP via SMTP
+        $this->sendOtpEmail($request, $user, $otp);
+
         return response()->json([
             'status' => 'success',
-            'message' => 'New 6-digit OTP code sent successfully.',
+            'message' => 'New 6-digit OTP code sent successfully to your email.',
             'data' => [
                 'email' => $user->email,
                 'otp_demo' => $otp,
@@ -162,6 +200,9 @@ class AuthController extends Controller
                 'otp_code' => $otp,
                 'otp_expires_at' => now()->addMinutes(10),
             ]);
+
+            // Send OTP via SMTP
+            $this->sendOtpEmail($request, $user, $otp);
 
             return response()->json([
                 'status' => 'pending_otp',

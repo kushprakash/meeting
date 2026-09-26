@@ -52,6 +52,66 @@ class Setting extends Model
     }
 
     /**
+     * Get Setting matching current HTTP Request (Origin / Host / User Setting)
+     */
+    public static function getForRequest(?\Illuminate\Http\Request $request = null): ?self
+    {
+        $setting = null;
+        if ($request) {
+            $user = $request->user('sanctum');
+            if ($user && $user->setting) {
+                $setting = $user->setting;
+            } elseif ($user && $user->admin_id) {
+                $setting = self::where('admin_id', $user->admin_id)->first();
+            }
+
+            if (!$setting) {
+                $rawUrl = $request->input('url') ?: ($request->query('url') ?: ($request->header('Origin') ?: $request->getHost()));
+                $cleanHost = parse_url($rawUrl, PHP_URL_HOST) ?: $rawUrl;
+                $cleanHost = preg_replace('/^https?:\/\//i', '', $cleanHost);
+                $cleanHost = preg_replace('/:\d+$/', '', $cleanHost);
+                $cleanHost = trim($cleanHost, '/');
+
+                if (!empty($cleanHost)) {
+                    $setting = self::where('website_url', 'LIKE', "%{$cleanHost}%")->first();
+                }
+            }
+        }
+
+        if (!$setting) {
+            $superAdmin = User::where('role', 'super_admin')->first();
+            $setting = $superAdmin ? self::where('admin_id', $superAdmin->id)->first() : self::first();
+        }
+
+        return $setting;
+    }
+
+    /**
+     * Dynamically apply SMTP Mail configuration to Laravel runtime mailer
+     */
+    public function applySmtpConfig(): void
+    {
+        if (!empty($this->smtp_host)) {
+            $encryption = !empty($this->smtp_encryption) ? strtolower($this->smtp_encryption) : 'tls';
+            if ($encryption === 'none' || $encryption === 'null') {
+                $encryption = null;
+            }
+
+            config([
+                'mail.default' => 'smtp',
+                'mail.mailers.smtp.transport' => 'smtp',
+                'mail.mailers.smtp.host' => $this->smtp_host,
+                'mail.mailers.smtp.port' => (int)($this->smtp_port ?? 587),
+                'mail.mailers.smtp.username' => $this->smtp_username,
+                'mail.mailers.smtp.password' => $this->smtp_password,
+                'mail.mailers.smtp.encryption' => $encryption,
+                'mail.from.address' => $this->smtp_from_email ?: ($this->contact_email ?: 'noreply@vidbez.com'),
+                'mail.from.name' => $this->smtp_from_name ?: ($this->app_name ?: 'VidBez Support'),
+            ]);
+        }
+    }
+
+    /**
      * Helper to clone default setting parameters from Super Admin for a newly created Admin.
      */
     public static function cloneFromSuperAdmin(int $newAdminId, ?string $websiteUrl = null): self

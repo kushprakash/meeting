@@ -35,6 +35,20 @@ class MeetingController extends Controller
 
         $host = $request->user();
 
+        // Check if user has corporate account type or corporate role to host meetings
+        $isCorporate = ($host->account_type === 'corporate') 
+            || ($host->role === 'corporate_employee') 
+            || ($host->role === 'super_admin') 
+            || ($host->role === 'admin');
+
+        if (!$isCorporate) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'HOST_REQUIRED',
+                'message' => 'Only Host account users can host meetings. Please upgrade your account to Host.'
+            ], 403);
+        }
+
         $startsAt = !empty($validated['starts_at']) ? \Carbon\Carbon::parse($validated['starts_at']) : now();
         $durationMinutes = !empty($validated['duration_minutes']) ? (int)$validated['duration_minutes'] : 60; // Standard 60 mins default if not scheduled
         $endsAt = !empty($validated['ends_at']) 
@@ -229,9 +243,39 @@ class MeetingController extends Controller
             ->with('user:id,name,email')
             ->get();
 
+        // Ensure Host participant is always present in active_participants
+        $hasHost = $activeParticipants->contains(function ($p) use ($meeting) {
+            return $p->role === 'host' || $p->user_id === $meeting->host_id;
+        });
+
+        if (!$hasHost && $meeting->host) {
+            $hostParticipant = MeetingParticipant::firstOrCreate(
+                [
+                    'meeting_id' => $meeting->id,
+                    'user_id' => $meeting->host_id,
+                ],
+                [
+                    'email' => strtolower($meeting->host->email),
+                    'role' => 'host',
+                    'status' => 'joined',
+                    'approved_at' => now(),
+                    'joined_at' => now(),
+                ]
+            );
+
+            if ($hostParticipant->status !== 'joined' || $hostParticipant->left_at !== null) {
+                $hostParticipant->update([
+                    'status' => 'joined',
+                    'left_at' => null,
+                ]);
+            }
+            $hostParticipant->load('user:id,name,email');
+            $activeParticipants->prepend($hostParticipant);
+        }
+
         // Pending join requests for host - Always fetch if user is Host
         $pendingRequests = [];
-        $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
+        $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email ?? '') === strtolower($user->email ?? ''));
 
         if ($isHost) {
             $pendingRequests = MeetingParticipant::where('meeting_id', $meeting->id)

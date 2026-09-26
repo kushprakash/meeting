@@ -31,8 +31,13 @@ class BrandingController extends Controller
         if (!$setting) {
             $rawUrl = $request->query('url') ?: ($request->header('Origin') ?: $request->getHost());
             $cleanHost = parse_url($rawUrl, PHP_URL_HOST) ?: $rawUrl;
+            $cleanHost = preg_replace('/^https?:\/\//i', '', $cleanHost);
+            $cleanHost = preg_replace('/:\d+$/', '', $cleanHost);
+            $cleanHost = trim($cleanHost, '/');
 
-            $setting = Setting::where('website_url', 'LIKE', "%{$cleanHost}%")->first();
+            if (!empty($cleanHost)) {
+                $setting = Setting::where('website_url', 'LIKE', "%{$cleanHost}%")->first();
+            }
         }
 
         // 3. Fallback to Super Admin setting or default setting

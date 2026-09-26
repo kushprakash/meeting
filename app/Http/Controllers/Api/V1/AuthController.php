@@ -18,6 +18,7 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
         ]);
@@ -25,14 +26,20 @@ class AuthController extends Controller
         // Generate 6-digit numeric OTP code
         $otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
 
-        $user = User::create([
+        $userData = [
             'name' => $validated['name'],
             'email' => strtolower(trim($validated['email'])),
             'password' => Hash::make($validated['password']),
             'otp_code' => $otp,
             'otp_expires_at' => now()->addMinutes(10),
             'email_verified_at' => null,
-        ]);
+        ];
+
+        if (!empty($validated['phone'])) {
+            $userData['phone'] = trim($validated['phone']);
+        }
+
+        $user = User::create($userData);
 
         return response()->json([
             'status' => 'pending_otp',

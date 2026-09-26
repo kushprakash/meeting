@@ -16,7 +16,7 @@ class LiveKitService
     {
         $this->apiKey = config('services.livekit.api_key', env('LIVEKIT_API_KEY', 'devkey'));
         $this->apiSecret = config('services.livekit.api_secret', env('LIVEKIT_API_SECRET', 'devsecretkeyforlivekittoken123456'));
-        $this->hostUrl = config('services.livekit.host', env('LIVEKIT_HOST', 'http://127.0.0.1:7880'));
+        $this->hostUrl = config('services.livekit.host', env('LIVEKIT_HOST', 'wss://vidbez.com/livekit/'));
     }
 
     /**
@@ -62,8 +62,8 @@ class LiveKitService
             $videoGrant['roomCreate'] = true;
         }
 
-        // Generate unique sub identity per connection session so multi-device users don't collide
-        $identity = (string) $user->id . '_' . substr(md5($user->id . '_' . microtime()), 0, 6);
+        // Set participant identity to user email for clean WebRTC track mapping across clients
+        $identity = strtolower($user->email);
 
         $payload = [
             'iss' => $this->apiKey,

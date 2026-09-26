@@ -110,9 +110,12 @@ class MeetingController extends Controller
         $user = $request->user();
         $now = now();
 
-        // Mark meetings created > 24 hours ago as ended
+        // Mark meetings created > 24 hours ago or whose ends_at has passed as ended
         Meeting::where('status', 'active')
-            ->where('created_at', '<', $now->copy()->subHours(24))
+            ->where(function ($q) use ($now) {
+                $q->where('ends_at', '<', $now)
+                  ->orWhere('created_at', '<', $now->copy()->subHours(24));
+            })
             ->update(['status' => 'ended']);
 
         $hosted = Meeting::where('host_id', $user->id)
@@ -121,12 +124,15 @@ class MeetingController extends Controller
             ->get()
             ->map(function ($m) use ($now) {
                 $m->is_expired = ($m->status === 'ended') 
+                    || ($m->ends_at && $now->gt($m->ends_at))
                     || ($m->created_at && $now->diffInHours($m->created_at) >= 24);
                 return $m;
             });
 
-        $invitedMeetingIds = MeetingParticipant::where(function ($q) use ($user) {
+        $userEmail = strtolower(trim($user->email));
+        $invitedMeetingIds = MeetingParticipant::where(function ($q) use ($user, $userEmail) {
             $q->where('user_id', $user->id)
+              ->orWhere('email', $userEmail)
               ->orWhere('email', $user->email);
         })->pluck('meeting_id');
 
@@ -137,6 +143,7 @@ class MeetingController extends Controller
             ->get()
             ->map(function ($m) use ($now) {
                 $m->is_expired = ($m->status === 'ended') 
+                    || ($m->ends_at && $now->gt($m->ends_at))
                     || ($m->created_at && $now->diffInHours($m->created_at) >= 24);
                 return $m;
             });

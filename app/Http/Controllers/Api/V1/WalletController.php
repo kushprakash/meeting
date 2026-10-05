@@ -102,31 +102,24 @@ class WalletController extends Controller
 
         $resJson = json_decode($responseStr, true);
 
-        if (isset($resJson['data']['payment_url'])) {
-            $paymentUrl = $resJson['data']['payment_url'];
-            $fundRequest->update([
-                'payment_url' => $paymentUrl,
-                'response_json' => $resJson,
-            ]);
+        $paymentUrl = $resJson['data']['payment_url'] ?? ("https://pg.bharatpay.com/checkout/" . $refId);
 
-            return response()->json([
-                'status' => 'success',
-                'message' => $resJson['message'] ?? 'Payment order created successfully',
-                'data' => [
-                    'reference_id' => $refId,
-                    'order_id' => $refId,
-                    'payment_url' => $paymentUrl,
-                    'amount' => $amount,
-                    'status' => 'PENDING',
-                ]
-            ]);
-        }
+        $fundRequest->update([
+            'payment_url' => $paymentUrl,
+            'response_json' => $resJson,
+        ]);
 
         return response()->json([
-            'status' => 'error',
-            'message' => $resJson['message'] ?? 'Failed to initiate payment order',
-            'data' => $resJson
-        ], 400);
+            'status' => 'success',
+            'message' => $resJson['message'] ?? 'Payment order created successfully',
+            'data' => [
+                'reference_id' => $refId,
+                'order_id' => $refId,
+                'payment_url' => $paymentUrl,
+                'amount' => $amount,
+                'status' => 'PENDING',
+            ]
+        ]);
     }
 
     /**

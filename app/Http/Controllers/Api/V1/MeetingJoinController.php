@@ -44,57 +44,26 @@ class MeetingJoinController extends Controller
             ], 404);
         }
 
-        // Check 2: Meeting active?
-        if ($meeting->status !== 'active') {
-            return response()->json([
-                'status' => 'error',
-                'code' => 'MEETING_INACTIVE',
-                'message' => 'Meeting is not currently active.'
-            ], 400);
-        }
-
-        // Check 3: Meeting time valid?
-        $now = now();
-        if ($meeting->starts_at && $now->lt($meeting->starts_at)) {
-            return response()->json([
-                'status' => 'error',
-                'code' => 'MEETING_NOT_STARTED',
-                'message' => 'Meeting has not started yet.',
-                'starts_at' => $meeting->starts_at,
-                'starts_in_seconds' => (int)$now->diffInSeconds($meeting->starts_at)
-            ], 400);
-        }
-
-        if ($meeting->ends_at && $now->gt($meeting->ends_at)) {
-            if ($meeting->status === 'active') {
-                $meeting->update(['status' => 'ended']);
-            }
-            return response()->json([
-                'status' => 'error',
-                'code' => 'MEETING_EXPIRED',
-                'message' => 'Meeting time has ended. Room is closed.',
-                'ends_at' => $meeting->ends_at
-            ], 400);
-        }
-
-        // Check 9: User blocked or removed?
-        $participant = MeetingParticipant::where('meeting_id', $meeting->id)
-            ->where(function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->orWhere('email', strtolower($user->email));
-            })->first();
-
-        if ($participant && in_array($participant->status, ['blocked', 'removed'])) {
-            return response()->json([
-                'status' => 'error',
-                'code' => 'ACCESS_DENIED',
-                'message' => 'You have been blocked or removed from this meeting.'
-            ], 403);
-        }
-
-        // Check 10 & Special Case: Is Host?
+        // Check 10 & Special Case: Is Host? (Host can ALWAYS join their own meeting directly with 0 payment!)
         $isHost = $meeting->isHost($user);
         if ($isHost) {
+            if ($meeting->status !== 'active') {
+                $meeting->update(['status' => 'active']);
+            }
+
+            MeetingParticipant::updateOrCreate(
+                [
+                    'meeting_id' => $meeting->id,
+                    'user_id' => $user->id,
+                ],
+                [
+                    'email' => strtolower($user->email),
+                    'role' => 'host',
+                    'status' => 'joined',
+                    'joined_at' => now(),
+                ]
+            );
+
             // Notify all users that host has connected and meeting has started
             \App\Models\AppNotification::create([
                 'user_id' => null, // Global notification

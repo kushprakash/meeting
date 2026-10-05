@@ -109,15 +109,21 @@ class WalletController extends Controller
             'response_json' => $resJson,
         ]);
 
+        $accessKey = is_string($resJson['data'] ?? null) 
+            ? $resJson['data'] 
+            : ($resJson['data']['access_key'] ?? ($resJson['access_key'] ?? null));
+
         return response()->json([
             'status' => 'success',
             'message' => $resJson['message'] ?? 'Payment order created successfully',
             'data' => [
                 'reference_id' => $refId,
                 'order_id' => $refId,
+                'access_key' => $accessKey,
                 'payment_url' => $paymentUrl,
                 'amount' => $amount,
                 'status' => 'PENDING',
+                'env' => 'prod',
             ]
         ]);
     }

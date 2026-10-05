@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\FundRequest;
 use App\Models\Passbook;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,217 @@ class WalletController extends Controller
                 'passbook' => $history,
             ]
         ]);
+    }
+
+    /**
+     * Initiate Payment Gateway Order Request
+     * POST /api/v1/wallet/initiate-payment
+     */
+    public function initiatePayment(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1',
+        ]);
+
+        $user = $request->user();
+        $amount = (float)$validated['amount'];
+        $refId = 'ORD_PG_' . time() . rand(1000, 9999);
+
+        // 1. Create PENDING FundRequest record in database
+        $fundRequest = FundRequest::create([
+            'user_id' => $user->id,
+            'reference_id' => $refId,
+            'amount' => $amount,
+            'status' => 'PENDING',
+        ]);
+
+        // 2. Prepare Payment Gateway Request Data
+        $url = "https://icchhamatidataservice.com/api/pg/request";
+
+        $postData = [
+            "reference_id"  => $refId,
+            "amount"        => $amount,
+            "name"          => $user->name ?? 'User',
+            "email"         => $user->email ?? 'user@bestrecharge.com',
+            "mobile_number" => $user->phone ?? ($user->mobile_number ?? '9876543210'),
+            "success_url"   => "https://vidbez.com/api/v1/wallet/callback/success",
+            "failure_url"   => "https://vidbez.com/api/v1/wallet/callback/failure"
+        ];
+
+        $headers = [
+            "Content-Type: application/json",
+            "Accept: application/json",
+            "mid: AGENT1603",
+            "mkey: F0DUe9k9TiouekW3rwuZIJkwN1fa6Lsx",
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($postData),
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+        ]);
+
+        $responseStr = curl_exec($ch);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Payment Gateway cURL Error: ' . $curlError,
+            ], 500);
+        }
+
+        $resJson = json_decode($responseStr, true);
+
+        if (isset($resJson['data']['payment_url'])) {
+            $paymentUrl = $resJson['data']['payment_url'];
+            $fundRequest->update([
+                'payment_url' => $paymentUrl,
+                'response_json' => $resJson,
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => $resJson['message'] ?? 'Payment order created successfully',
+                'data' => [
+                    'reference_id' => $refId,
+                    'order_id' => $refId,
+                    'payment_url' => $paymentUrl,
+                    'amount' => $amount,
+                    'status' => 'PENDING',
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => $resJson['message'] ?? 'Failed to initiate payment order',
+            'data' => $resJson
+        ], 400);
+    }
+
+    /**
+     * Verify Payment Gateway Transaction & Add Funds to Wallet Passbook
+     * POST /api/v1/wallet/verify-payment
+     */
+    public function verifyPayment(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'txnid' => 'required|string',
+        ]);
+
+        $txnid = $validated['txnid'];
+        $user = $request->user();
+
+        // 1. Check if FundRequest exists in database
+        $fundRequest = FundRequest::where('reference_id', $txnid)->first();
+        if (!$fundRequest) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Transaction record not found for ID: ' . $txnid,
+            ], 404);
+        }
+
+        // Check if already completed to prevent duplicate credit
+        if ($fundRequest->status === 'SUCCESS') {
+            $lastPassbook = Passbook::where('user_id', $fundRequest->user_id)->latest('id')->first();
+            $currentBal = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Payment already verified and credited to wallet!',
+                'data' => [
+                    'txnid' => $txnid,
+                    'status' => 'SUCCESS',
+                    'balance' => $currentBal,
+                ]
+            ]);
+        }
+
+        // 2. Call External Verify API
+        $url = "https://icchhamatidataservice.com/api/pg/verify";
+        $postData = [
+            "txnid" => $txnid,
+        ];
+
+        $headers = [
+            "Content-Type: application/json",
+            "Accept: application/json",
+            "mid: AGENT1603",
+            "mkey: F0DUe9k9TiouekW3rwuZIJkwN1fa6Lsx",
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($postData),
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 30,
+        ]);
+
+        $responseStr = curl_exec($ch);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Payment Verification cURL Error: ' . $curlError,
+            ], 500);
+        }
+
+        $resJson = json_decode($responseStr, true);
+
+        // Check if status is success / SUCCESS
+        $pgStatus = strtolower($resJson['data']['status'] ?? ($resJson['status'] ?? ''));
+
+        if ($pgStatus === 'success' || $pgStatus === '1') {
+            // Update FundRequest status to SUCCESS
+            $fundRequest->update([
+                'status' => 'SUCCESS',
+                'response_json' => $resJson,
+            ]);
+
+            // Add money to user wallet creating CR Passbook entry
+            $targetUserId = $fundRequest->user_id;
+            $amount = (float)$fundRequest->amount;
+
+            $lastPassbook = Passbook::where('user_id', $targetUserId)->latest('id')->first();
+            $preBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+            $newBalance = $preBalance + $amount;
+
+            $passbook = Passbook::create([
+                'user_id' => $targetUserId,
+                'details' => 'Added Money to Wallet (PG Ref: ' . $txnid . ')',
+                'type' => 'CR',
+                'pre_balance' => $preBalance,
+                'amount' => $amount,
+                'balance' => $newBalance,
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Payment verified successfully! ₹' . number_format($amount, 2) . ' credited to wallet.',
+                'data' => [
+                    'txnid' => $txnid,
+                    'status' => 'SUCCESS',
+                    'amount' => $amount,
+                    'balance' => $newBalance,
+                    'passbook' => $passbook,
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => $resJson['message'] ?? 'Payment verification failed or payment is pending.',
+            'data' => $resJson,
+        ], 400);
     }
 
     /**

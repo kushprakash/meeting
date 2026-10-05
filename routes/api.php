@@ -32,6 +32,8 @@ Route::prefix('v1')->group(function () {
         // Wallet Routes
         Route::get('/wallet', [\App\Http\Controllers\Api\V1\WalletController::class, 'index']);
         Route::post('/wallet/add-money', [\App\Http\Controllers\Api\V1\WalletController::class, 'addMoney']);
+        Route::post('/wallet/initiate-payment', [\App\Http\Controllers\Api\V1\WalletController::class, 'initiatePayment']);
+        Route::post('/wallet/verify-payment', [\App\Http\Controllers\Api\V1\WalletController::class, 'verifyPayment']);
         Route::get('/wallet/history', [\App\Http\Controllers\Api\V1\WalletController::class, 'history']);
 
         // Banner & Notification Routes

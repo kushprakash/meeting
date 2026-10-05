@@ -16,7 +16,7 @@ class LiveKitService
     {
         $this->apiKey = config('services.livekit.api_key', env('LIVEKIT_API_KEY', 'devkey'));
         $this->apiSecret = config('services.livekit.api_secret', env('LIVEKIT_API_SECRET', 'devsecretkeyforlivekittoken123456'));
-        $this->hostUrl = config('services.livekit.host', env('LIVEKIT_HOST', 'wss://vidbez.com/livekit/'));
+        $this->hostUrl = config('services.livekit.host', env('LIVEKIT_HOST', 'wss://bestrecharge.com/livekit/'));
     }
 
     /**

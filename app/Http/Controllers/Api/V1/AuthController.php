@@ -25,12 +25,12 @@ class AuthController extends Controller
                 $setting->applySmtpConfig();
             }
 
-            $appName = $setting->app_name ?? 'VidBez';
+            $appName = $setting->app_name ?? 'Best Recharge';
 
             Mail::raw(
                 "Your 6-digit OTP verification code for {$appName} is: {$otp}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this verification code, please ignore this message.",
                 function ($message) use ($user, $appName, $otp) {
-                    $fromAddress = config('mail.from.address') ?: 'noreply@vidbez.com';
+                    $fromAddress = config('mail.from.address') ?: 'noreply@bestrecharge.com';
                     $fromName = config('mail.from.name') ?: "{$appName} Support";
 
                     $message->from($fromAddress, $fromName)

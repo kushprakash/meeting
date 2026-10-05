@@ -47,7 +47,6 @@ class AuthController extends Controller
      * Register a new user account with OTP generation.
      */
     public function register(Request $request): JsonResponse
-    public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',

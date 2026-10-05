@@ -50,6 +50,7 @@ class BannerNotificationController extends Controller
                 'meeting_uuid' => $m->uuid,
                 'price' => (float)$m->price,
                 'host_name' => $m->host?->name ?? 'Host',
+                'host_id' => $m->host_id,
                 'starts_at' => $m->starts_at ? $m->starts_at->toIso8601String() : null,
             ];
         }

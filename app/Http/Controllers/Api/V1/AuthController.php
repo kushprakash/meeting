@@ -47,24 +47,27 @@ class AuthController extends Controller
      * Register a new user account with OTP generation.
      */
     public function register(Request $request): JsonResponse
+    public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
+            'account_type' => 'nullable|string|in:free,corporate',
         ]);
 
-        // Generate 6-digit numeric OTP code
-        $otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+        $accountType = $validated['account_type'] ?? 'free';
+        $role = ($accountType === 'corporate') ? 'corporate_employee' : 'free_user';
 
         $userData = [
             'name' => $validated['name'],
             'email' => strtolower(trim($validated['email'])),
             'password' => Hash::make($validated['password']),
-            'otp_code' => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
-            'email_verified_at' => null,
+            'account_type' => $accountType,
+            'role' => $role,
+            'is_verified' => 1,
+            'email_verified_at' => now(),
         ];
 
         if (!empty($validated['phone'])) {
@@ -72,28 +75,26 @@ class AuthController extends Controller
         }
 
         $user = User::create($userData);
-
-        // Send OTP via SMTP
-        $this->sendOtpEmail($request, $user, $otp);
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'status' => 'pending_otp',
-            'message' => 'Registration successful! 6-digit OTP code sent to your email.',
+            'status' => 'success',
+            'message' => 'Registration successful! Welcome to Best Recharge.',
             'data' => [
-                'email' => $user->email,
-                'otp_demo' => $otp, // Exposed for UI testing demo convenience
+                'user' => $user->fresh(),
+                'token' => $token,
             ]
         ], 201);
     }
 
     /**
-     * Verify 6-digit OTP code and issue API Token.
+     * Verify 6-digit OTP code and issue API Token (Legacy Compatibility).
      */
     public function verifyOtp(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'email' => 'required|email',
-            'otp_code' => 'required|string|size:6',
+            'otp_code' => 'nullable|string',
         ]);
 
         $user = User::where('email', strtolower(trim($validated['email'])))->first();
@@ -105,23 +106,9 @@ class AuthController extends Controller
             ], 404);
         }
 
-        if ($user->otp_code !== $validated['otp_code']) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid OTP code. Please check and try again.'
-            ], 400);
-        }
-
-        if ($user->otp_expires_at && now()->gt($user->otp_expires_at)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'OTP code has expired. Please click Resend OTP.'
-            ], 400);
-        }
-
-        // Mark user as verified and clear OTP
         $user->update([
             'email_verified_at' => now(),
+            'is_verified' => 1,
             'otp_code' => null,
             'otp_expires_at' => null,
         ]);
@@ -130,7 +117,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Email verified and logged in successfully!',
+            'message' => 'Account logged in successfully!',
             'data' => [
                 'user' => $user->fresh(),
                 'token' => $token,
@@ -139,39 +126,13 @@ class AuthController extends Controller
     }
 
     /**
-     * Resend 6-digit OTP code.
+     * Resend 6-digit OTP code (Legacy Compatibility).
      */
     public function resendOtp(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'email' => 'required|email',
-        ]);
-
-        $user = User::where('email', strtolower(trim($validated['email'])))->first();
-
-        if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'User account not found.'
-            ], 404);
-        }
-
-        $otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-        $user->update([
-            'otp_code' => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
-        ]);
-
-        // Send OTP via SMTP
-        $this->sendOtpEmail($request, $user, $otp);
-
         return response()->json([
             'status' => 'success',
-            'message' => 'New 6-digit OTP code sent successfully to your email.',
-            'data' => [
-                'email' => $user->email,
-                'otp_demo' => $otp,
-            ]
+            'message' => 'Direct login enabled. No OTP required.',
         ]);
     }
 
@@ -193,24 +154,10 @@ class AuthController extends Controller
             ]);
         }
 
-        // If email not verified, generate fresh OTP and require verification
         if (!$user->email_verified_at) {
-            $otp = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
             $user->update([
-                'otp_code' => $otp,
-                'otp_expires_at' => now()->addMinutes(10),
-            ]);
-
-            // Send OTP via SMTP
-            $this->sendOtpEmail($request, $user, $otp);
-
-            return response()->json([
-                'status' => 'pending_otp',
-                'message' => 'Email verification required. OTP sent.',
-                'data' => [
-                    'email' => $user->email,
-                    'otp_demo' => $otp,
-                ]
+                'email_verified_at' => now(),
+                'is_verified' => 1,
             ]);
         }
 
@@ -220,7 +167,7 @@ class AuthController extends Controller
             'status' => 'success',
             'message' => 'Logged in successfully',
             'data' => [
-                'user' => $user,
+                'user' => $user->fresh(),
                 'token' => $token,
             ]
         ]);

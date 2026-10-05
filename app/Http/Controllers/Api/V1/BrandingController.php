@@ -50,13 +50,13 @@ class BrandingController extends Controller
             'status' => 'success',
             'data' => [
                 'branding' => [
-                    'company_name' => $setting->company_name ?? 'Best Recharge Services',
-                    'app_name' => $setting->app_name ?? 'Best Recharge',
+                    'company_name' => ($setting && !empty($setting->company_name) && !str_contains(strtolower($setting->company_name), 'vidbez')) ? $setting->company_name : 'Best Recharge Services',
+                    'app_name' => ($setting && !empty($setting->app_name) && !str_contains(strtolower($setting->app_name), 'vidbez')) ? $setting->app_name : 'Best Recharge',
                     'logo_url' => $setting->logo_url ?? null,
                     'favicon_url' => $setting->favicon_url ?? null,
                     'primary_color' => $setting->primary_color ?? '#6C5CE7',
                     'secondary_color' => $setting->secondary_color ?? '#00CEC9',
-                    'tagline' => $setting->tagline ?? 'Instant Mobile, DTH & Utility Payment Services',
+                    'tagline' => ($setting && !empty($setting->tagline) && !str_contains(strtolower($setting->tagline), 'webrtc')) ? $setting->tagline : 'Instant Mobile, DTH & Utility Payment Services',
                     'contact_email' => $setting->contact_email ?? 'support@bestrecharge.com',
                     'website_url' => $setting->website_url ?? null,
                     'about_title' => $setting->about_title ?? 'Best Recharge - Fast & Reliable Recharge App',

@@ -29,6 +29,16 @@ Route::prefix('v1')->group(function () {
         Route::post('/user/switch-account-type', [AuthController::class, 'switchAccountType']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
+        // Wallet Routes
+        Route::get('/wallet', [\App\Http\Controllers\Api\V1\WalletController::class, 'index']);
+        Route::post('/wallet/add-money', [\App\Http\Controllers\Api\V1\WalletController::class, 'addMoney']);
+        Route::get('/wallet/history', [\App\Http\Controllers\Api\V1\WalletController::class, 'history']);
+
+        // Banner & Notification Routes
+        Route::get('/banners', [\App\Http\Controllers\Api\V1\BannerNotificationController::class, 'getBanners']);
+        Route::get('/notifications', [\App\Http\Controllers\Api\V1\BannerNotificationController::class, 'getNotifications']);
+        Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\V1\BannerNotificationController::class, 'markRead']);
+
         // Meeting Management
         Route::get('/meetings', [MeetingController::class, 'index']);
         Route::post('/meetings', [MeetingController::class, 'store']);

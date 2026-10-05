@@ -19,60 +19,30 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'otp_expires_at' => 'datetime',
+        'password' => 'hashed',
+        'is_verified' => 'boolean',
+        'permissions' => 'array',
+    ];
+
+    protected $appends = ['wallet_balance', 'balance'];
+
+    public function passbooks()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'otp_expires_at' => 'datetime',
-            'password' => 'hashed',
-            'is_verified' => 'boolean',
-            'permissions' => 'array',
-        ];
+        return $this->hasMany(Passbook::class, 'user_id')->latest('id');
     }
 
-    protected static function booted()
+    public function getWalletBalanceAttribute(): float
     {
-        static::created(function (User $user) {
-            // Automatically initialize Setting for newly created Admins and Super Admins
-            if (in_array($user->role, ['super_admin', 'admin'])) {
-                Setting::cloneFromSuperAdmin($user->id);
-            }
-        });
+        $lastPassbook = Passbook::where('user_id', $this->id)->latest('id')->first();
+        return $lastPassbook ? (float)$lastPassbook->balance : 0.00;
     }
 
-    public function setting()
+    public function getBalanceAttribute(): float
     {
-        return $this->hasOne(Setting::class, 'admin_id');
-    }
-
-    public function parentAdmin()
-    {
-        return $this->belongsTo(User::class, 'admin_id');
-    }
-
-    public function subUsers()
-    {
-        return $this->hasMany(User::class, 'admin_id');
-    }
-
-    public function corporate()
-    {
-        return $this->belongsTo(Corporate::class, 'corporate_id');
-    }
-
-    public function hostedMeetings()
-    {
-        return $this->hasMany(Meeting::class, 'host_id');
-    }
-
-    public function meetingParticipations()
-    {
-        return $this->hasMany(MeetingParticipant::class, 'user_id');
+        return $this->getWalletBalanceAttribute();
     }
 
     public function isSuperAdmin(): bool

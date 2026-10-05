@@ -19,7 +19,9 @@ class MeetingController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'visibility' => 'required|in:private,public',
+            'description' => 'nullable|string',
+            'price' => 'nullable|numeric|min:0',
+            'visibility' => 'nullable|in:private,public',
             'approval_required' => 'boolean',
             'starts_at' => 'nullable|date',
             'ends_at' => 'nullable|date|after:starts_at',
@@ -55,12 +57,17 @@ class MeetingController extends Controller
             ? \Carbon\Carbon::parse($validated['ends_at']) 
             : (clone $startsAt)->addMinutes($durationMinutes);
 
+        $price = isset($validated['price']) ? (float)$validated['price'] : 0.00;
+        $visibility = $validated['visibility'] ?? 'public';
+
         $meeting = Meeting::create([
             'uuid' => Str::uuid()->toString(),
             'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
             'host_id' => $host->id,
-            'visibility' => $validated['visibility'],
-            'approval_required' => $validated['approval_required'] ?? ($validated['visibility'] === 'public'),
+            'price' => $price,
+            'visibility' => $visibility,
+            'approval_required' => $validated['approval_required'] ?? false,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             'max_participants' => $validated['max_participants'] ?? null,
@@ -80,6 +87,15 @@ class MeetingController extends Controller
             'status' => 'approved',
             'approved_at' => now(),
             'approved_by' => $host->id,
+        ]);
+
+        // Create notification for all users about the new meeting
+        \App\Models\AppNotification::create([
+            'user_id' => null, // Global
+            'title' => 'New Meeting Created: ' . $meeting->title,
+            'message' => 'Join fee: ₹' . number_format($price, 2) . ' | Host: ' . $host->name,
+            'type' => 'meeting_created',
+            'meeting_uuid' => $meeting->uuid,
         ]);
 
         // Add invited emails for both private and public meetings

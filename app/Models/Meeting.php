@@ -12,8 +12,10 @@ class Meeting extends Model
     protected $fillable = [
         'uuid',
         'title',
+        'description',
         'host_id',
         'visibility',
+        'price',
         'approval_required',
         'status',
         'max_participants',
@@ -26,6 +28,7 @@ class Meeting extends Model
     ];
 
     protected $casts = [
+        'price' => 'float',
         'approval_required' => 'boolean',
         'allow_audio' => 'boolean',
         'allow_video' => 'boolean',

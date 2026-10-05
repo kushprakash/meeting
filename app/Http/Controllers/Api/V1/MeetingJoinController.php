@@ -95,6 +95,15 @@ class MeetingJoinController extends Controller
         // Check 10 & Special Case: Is Host?
         $isHost = $meeting->isHost($user);
         if ($isHost) {
+            // Notify all users that host has connected and meeting has started
+            \App\Models\AppNotification::create([
+                'user_id' => null, // Global notification
+                'title' => 'Meeting Started: ' . $meeting->title,
+                'message' => 'Host ' . $user->name . ' has connected. Join now!',
+                'type' => 'meeting_started',
+                'meeting_uuid' => $meeting->uuid,
+            ]);
+
             // Host gets direct token
             $token = $this->liveKitService->generateToken($meeting, $user, 'host');
             return response()->json([
@@ -107,6 +116,44 @@ class MeetingJoinController extends Controller
                     'livekit_host' => $this->liveKitService->getHostUrl(),
                     'room' => $meeting->uuid,
                 ]
+            ]);
+        }
+
+        // Check Meeting Price & Debit Wallet for Participant
+        $meetingPrice = (float)($meeting->price ?? 0.0);
+        $alreadyPaid = $participant && (
+            $participant->status === 'joined' || 
+            $participant->status === 'approved' ||
+            $participant->joined_at !== null
+        );
+
+        if ($meetingPrice > 0 && !$alreadyPaid) {
+            // Get user current balance from last passbook row
+            $lastPassbook = \App\Models\Passbook::where('user_id', $user->id)->latest('id')->first();
+            $preBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+
+            if ($preBalance < $meetingPrice) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 'INSUFFICIENT_FUNDS',
+                    'message' => 'Insufficient wallet balance (₹' . number_format($preBalance, 2) . '). Meeting fee is ₹' . number_format($meetingPrice, 2) . '. Please add money to your wallet to join.',
+                    'data' => [
+                        'required_amount' => $meetingPrice,
+                        'current_balance' => $preBalance,
+                    ]
+                ], 400);
+            }
+
+            $newBalance = $preBalance - $meetingPrice;
+
+            // Create DR Passbook Record
+            \App\Models\Passbook::create([
+                'user_id' => $user->id,
+                'details' => 'Meeting Entry Fee: ' . $meeting->title,
+                'type' => 'DR',
+                'pre_balance' => $preBalance,
+                'amount' => $meetingPrice,
+                'balance' => $newBalance,
             ]);
         }
 

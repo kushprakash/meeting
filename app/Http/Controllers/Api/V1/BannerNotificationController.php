@@ -58,8 +58,8 @@ class BannerNotificationController extends Controller
         if (empty($slides)) {
             $slides[] = [
                 'type' => 'news',
-                'title' => 'Welcome to MeetInt App',
-                'description' => 'Host and join instant audio meetings with seamless wallet pay.',
+                'title' => 'Welcome to Best Recharge',
+                'description' => 'Best Recharge mobile APP to Mobile Recharge, DTH Recharge and Wallet',
                 'image_url' => null,
                 'meeting_uuid' => null,
                 'price' => 0.0,

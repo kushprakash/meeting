@@ -102,16 +102,40 @@ class WalletController extends Controller
 
         $resJson = json_decode($responseStr, true);
 
-        $paymentUrl = $resJson['data']['payment_url'] ?? ("https://pg.bharatpay.com/checkout/" . $refId);
+        // Check if gateway returned error (e.g. status == 0 or missing payment_url)
+        if (empty($resJson['status']) || (int)$resJson['status'] !== 1) {
+            $fundRequest->update([
+                'status' => 'FAILED',
+                'response_json' => $resJson,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $resJson['message'] ?? 'Payment Gateway Error: Unable to initiate payment',
+                'data' => $resJson,
+            ], 400);
+        }
+
+        $paymentUrl = $resJson['payment_url'] ?? ($resJson['data']['payment_url'] ?? null);
+
+        // Extract access_key from payment_url (e.g. https://icchhamatidataservice.com/pg/checkout/{access_key})
+        $accessKey = null;
+        if ($paymentUrl) {
+            $parts = explode('/checkout/', $paymentUrl);
+            if (count($parts) > 1) {
+                $accessKey = trim($parts[1]);
+            }
+        }
+        if (!$accessKey) {
+            $accessKey = is_string($resJson['data'] ?? null) 
+                ? $resJson['data'] 
+                : ($resJson['data']['access_key'] ?? ($resJson['access_key'] ?? null));
+        }
 
         $fundRequest->update([
             'payment_url' => $paymentUrl,
             'response_json' => $resJson,
         ]);
-
-        $accessKey = is_string($resJson['data'] ?? null) 
-            ? $resJson['data'] 
-            : ($resJson['data']['access_key'] ?? ($resJson['access_key'] ?? null));
 
         return response()->json([
             'status' => 'success',

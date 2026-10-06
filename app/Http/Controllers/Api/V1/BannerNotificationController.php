@@ -47,6 +47,8 @@ class BannerNotificationController extends Controller
                 ->where('status', 'joined')
                 ->isNotEmpty();
 
+            $isMeetingStarted = $m->status === 'active' || $m->status === 'started' || $isHostJoined;
+
             $slides[] = [
                 'type' => 'meeting',
                 'title' => $m->title,
@@ -56,9 +58,9 @@ class BannerNotificationController extends Controller
                 'price' => (float)$m->price,
                 'host_name' => $m->host?->name ?? 'Host',
                 'host_id' => $m->host_id,
-                'status' => $m->status,
+                'status' => $isMeetingStarted ? 'active' : $m->status,
                 'is_host_joined' => $isHostJoined,
-                'starts_at' => $m->starts_at ? $m->starts_at->format('Y-m-d H:i:s') : null,
+                'starts_at' => $m->starts_at ? $m->starts_at->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s') : null,
             ];
         }
 

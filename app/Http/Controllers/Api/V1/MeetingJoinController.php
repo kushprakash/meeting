@@ -95,13 +95,16 @@ class MeetingJoinController extends Controller
                   ->orWhere('email', strtolower($user->email));
             })->first();
 
-        // Check Meeting Price & Debit Wallet for Participant
-        $meetingPrice = (float)($meeting->price ?? 0.0);
-        $alreadyPaid = $participant && (
-            $participant->status === 'joined' || 
-            $participant->status === 'approved' ||
-            $participant->joined_at !== null
-        );
+        // Check if user has already paid for this meeting via Passbook or Participant record
+        $hasPaidPassbook = \App\Models\Passbook::where('user_id', $user->id)
+            ->where('type', 'DR')
+            ->where('details', 'LIKE', '%Meeting Entry Fee:%' . $meeting->title . '%')
+            ->exists();
+
+        $alreadyPaid = $hasPaidPassbook || ($participant && (
+            $participant->joined_at !== null ||
+            in_array($participant->status, ['joined', 'approved', 'left'])
+        ));
 
         if ($meetingPrice > 0 && !$alreadyPaid) {
             // Get user current balance from last passbook row

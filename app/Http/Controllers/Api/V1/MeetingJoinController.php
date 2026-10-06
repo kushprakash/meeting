@@ -95,6 +95,9 @@ class MeetingJoinController extends Controller
                   ->orWhere('email', strtolower($user->email));
             })->first();
 
+        // Check Meeting Price & Debit Wallet for Participant
+        $meetingPrice = (float)($meeting->price ?? 0.0);
+
         // Check if user has already paid for this meeting via Passbook or Participant record
         $hasPaidPassbook = \App\Models\Passbook::where('user_id', $user->id)
             ->where('type', 'DR')

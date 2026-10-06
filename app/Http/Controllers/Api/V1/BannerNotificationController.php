@@ -19,9 +19,9 @@ class BannerNotificationController extends Controller
         // 1. Fetch active custom news banners
         $newsBanners = NewsBanner::where('is_active', true)->latest()->get();
 
-        // 2. Fetch active meetings to slide as meeting banners
-        $activeMeetings = Meeting::where('status', 'active')
-            ->with('host:id,name,email')
+        // 2. Fetch active/started/scheduled meetings to slide as meeting banners
+        $activeMeetings = Meeting::whereIn('status', ['active', 'started', 'scheduled'])
+            ->with(['host:id,name,email', 'participants'])
             ->latest()
             ->take(10)
             ->get();
@@ -42,16 +42,23 @@ class BannerNotificationController extends Controller
 
         // Add meeting banners
         foreach ($activeMeetings as $m) {
+            $isHostJoined = $m->participants
+                ->where('role', 'host')
+                ->where('status', 'joined')
+                ->isNotEmpty();
+
             $slides[] = [
                 'type' => 'meeting',
                 'title' => $m->title,
-                'description' => $m->description ?? 'Live Audio Meeting by ' . ($m->host?->name ?? 'Host'),
+                'description' => $m->description ?? 'Audio Meeting by ' . ($m->host?->name ?? 'Host'),
                 'image_url' => null,
                 'meeting_uuid' => $m->uuid,
                 'price' => (float)$m->price,
                 'host_name' => $m->host?->name ?? 'Host',
                 'host_id' => $m->host_id,
-                'starts_at' => $m->starts_at ? $m->starts_at->toIso8601String() : null,
+                'status' => $m->status,
+                'is_host_joined' => $isHostJoined,
+                'starts_at' => $m->starts_at ? $m->starts_at->format('Y-m-d H:i:s') : null,
             ];
         }
 

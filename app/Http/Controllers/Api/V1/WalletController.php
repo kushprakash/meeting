@@ -268,9 +268,18 @@ class WalletController extends Controller
             ]);
         }
 
+        $newStatus = (str_contains($pgStatus, 'cancel') || str_contains(strtolower($resJson['message'] ?? ''), 'cancel'))
+            ? 'CANCELLED'
+            : 'FAILED';
+
+        $fundRequest->update([
+            'status' => $newStatus,
+            'response_json' => $resJson,
+        ]);
+
         return response()->json([
             'status' => 'error',
-            'message' => $resJson['message'] ?? 'Payment verification failed or payment is pending.',
+            'message' => $resJson['message'] ?? ($newStatus === 'CANCELLED' ? 'Payment was cancelled' : 'Payment verification failed'),
             'data' => $resJson,
         ], 400);
     }

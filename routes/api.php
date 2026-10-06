@@ -79,6 +79,23 @@ Route::prefix('v1')->group(function () {
         // Corporate Employee Management Routes
         Route::get('/corporate/employees', [\App\Http\Controllers\Api\V1\CorporateEmployeeController::class, 'listEmployees']);
         Route::post('/corporate/employees', [\App\Http\Controllers\Api\V1\CorporateEmployeeController::class, 'createEmployee']);
-        Route::post('/corporate/employees/{id}/toggle-hosting', [\App\Http\Controllers\Api\V1\CorporateEmployeeController::class, 'toggleHosting']);
+        // Recharge, DTH & Bill Payment Routes
+        Route::post('/recharge/mobile-plans', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getMobilePlans']);
+        Route::post('/recharge/get-operator', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getOperators']);
+        Route::post('/recharge/mobile-recharge', [\App\Http\Controllers\Api\V1\RechargeController::class, 'doRecharge']);
+        Route::post('/recharge/recharge', [\App\Http\Controllers\Api\V1\RechargeController::class, 'doRecharge']);
+        Route::post('/recharge/recharge-status', [\App\Http\Controllers\Api\V1\RechargeController::class, 'checkSingleStatus']);
+
+        // Bill Payment Routes
+        Route::get('/recharge/bill-categories', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getBillCategories']);
+        Route::post('/recharge/billers-by-category', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getBillersByCategory']);
+        Route::post('/recharge/fetch-bill', [\App\Http\Controllers\Api\V1\RechargeController::class, 'fetchBill']);
+        Route::post('/recharge/bill-payment', [\App\Http\Controllers\Api\V1\RechargeController::class, 'doRecharge']);
+        Route::post('/recharge/bill-status', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getBillStatus']);
+        Route::get('/recharge/history', [\App\Http\Controllers\Api\V1\RechargeController::class, 'history']);
     });
+
+    // Public / Cron Route for Pending Recharge Status Verification
+    Route::match(['get', 'post'], '/recharge/cron-check-status', [\App\Http\Controllers\Api\V1\RechargeController::class, 'checkPendingStatus']);
 });
+

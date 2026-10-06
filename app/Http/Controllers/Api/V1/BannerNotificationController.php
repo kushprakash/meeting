@@ -106,27 +106,45 @@ class BannerNotificationController extends Controller
     public function getNotifications(Request $request): JsonResponse
     {
         $user = $request->user();
+        $now = \Carbon\Carbon::now('Asia/Kolkata');
 
-        $notifications = AppNotification::where(function ($q) use ($user) {
+        $rawNotifications = AppNotification::where(function ($q) use ($user) {
             $q->whereNull('user_id')
               ->orWhere('user_id', $user->id);
         })
         ->latest()
-        ->take(30)
+        ->take(40)
         ->get();
 
-        $unreadCount = AppNotification::where(function ($q) use ($user) {
-            $q->whereNull('user_id')
-              ->orWhere('user_id', $user->id);
-        })
-        ->where('is_read', false)
-        ->count();
+        $notifications = [];
+        foreach ($rawNotifications as $n) {
+            if (!empty($n->meeting_uuid)) {
+                $meeting = Meeting::where('uuid', $n->meeting_uuid)->first();
+                // Exclude notification if meeting is missing, ended, or expired
+                if (!$meeting || $meeting->status === 'ended') {
+                    continue;
+                }
+                if ($meeting->ends_at) {
+                    $endsAt = \Carbon\Carbon::parse($meeting->ends_at)->setTimezone('Asia/Kolkata');
+                    if ($now->greaterThan($endsAt)) {
+                        continue;
+                    }
+                }
+                if ($meeting->starts_at) {
+                    $startsAt = \Carbon\Carbon::parse($meeting->starts_at)->setTimezone('Asia/Kolkata');
+                    if ($now->diffInHours($startsAt, false) < -12) {
+                        continue;
+                    }
+                }
+            }
+            $notifications[] = $n;
+        }
 
         return response()->json([
             'status' => 'success',
             'data' => [
-                'unread_count' => $unreadCount,
-                'notifications' => $notifications,
+                'unread_count' => count($notifications),
+                'notifications' => array_values($notifications),
             ]
         ]);
     }

@@ -88,6 +88,13 @@ class MeetingJoinController extends Controller
             ]);
         }
 
+        // Retrieve existing participant record for this user & meeting if exists
+        $participant = MeetingParticipant::where('meeting_id', $meeting->id)
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('email', strtolower($user->email));
+            })->first();
+
         // Check Meeting Price & Debit Wallet for Participant
         $meetingPrice = (float)($meeting->price ?? 0.0);
         $alreadyPaid = $participant && (

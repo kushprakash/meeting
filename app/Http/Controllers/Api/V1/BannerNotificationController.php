@@ -40,6 +40,8 @@ class BannerNotificationController extends Controller
             ];
         }
 
+        $user = $request->user();
+
         // Add meeting banners
         foreach ($activeMeetings as $m) {
             $isHostJoined = $m->participants
@@ -48,6 +50,19 @@ class BannerNotificationController extends Controller
                 ->isNotEmpty();
 
             $isMeetingStarted = $m->status === 'active' || $m->status === 'started' || $isHostJoined;
+
+            $alreadyPaid = false;
+            if ($user) {
+                $hasPaidPassbook = \App\Models\Passbook::where('user_id', $user->id)
+                    ->where('type', 'DR')
+                    ->where('details', 'LIKE', '%Meeting Entry Fee:%' . $m->title . '%')
+                    ->exists();
+
+                $alreadyPaid = $hasPaidPassbook || $m->participants
+                    ->where('user_id', $user->id)
+                    ->whereIn('status', ['joined', 'approved', 'left'])
+                    ->isNotEmpty();
+            }
 
             $slides[] = [
                 'type' => 'meeting',
@@ -60,6 +75,7 @@ class BannerNotificationController extends Controller
                 'host_id' => $m->host_id,
                 'status' => $isMeetingStarted ? 'active' : $m->status,
                 'is_host_joined' => $isHostJoined,
+                'already_paid' => $alreadyPaid,
                 'starts_at' => $m->starts_at ? $m->starts_at->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s') : null,
             ];
         }

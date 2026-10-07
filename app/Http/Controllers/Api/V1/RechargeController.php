@@ -250,7 +250,7 @@ class RechargeController extends Controller
         $postData = [
             'number' => $number,
             'operator' => $operator,
-            'circle' => $circle,
+            'circal' => $circle,
             'amount' => $amount,
             'type' => $type,
             'transaction_id' => $orderId,

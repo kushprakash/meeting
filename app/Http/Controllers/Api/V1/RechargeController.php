@@ -253,6 +253,7 @@ class RechargeController extends Controller
             'circle' => $circle,
             'amount' => $amount,
             'type' => $type,
+            'transaction_id' => $orderId,
         ];
 
         $apiResult = $this->callExternalApi($apiEndpoint, $postData);

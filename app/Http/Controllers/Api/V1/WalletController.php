@@ -69,8 +69,8 @@ class WalletController extends Controller
             'name' => $user->name ?? 'User',
             'email' => $user->email ?? 'user@bestrecharge.com',
             'mobile_number' => $user->phone ?? ($user->mobile_number ?? '9876543210'),
-            'success_url' => 'https://vidbez.com/api/v1/wallet/callback/success',
-            'failure_url' => 'https://vidbez.com/api/v1/wallet/callback/failure',
+            'success_url' => 'https://icchhamatidataservice.com/api/v1/wallet/callback/success',
+            'failure_url' => 'https://icchhamatidataservice.com/api/v1/wallet/callback/failure',
         ];
 
         $headers = [

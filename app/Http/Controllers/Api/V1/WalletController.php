@@ -119,14 +119,14 @@ class WalletController extends Controller
         $paymentUrl = $resJson['payment_url'] ?? ($resJson['data']['payment_url'] ?? null);
 
         // Extract access_key from payment_url (e.g. https://icchhamatidataservice.com/pg/checkout/{access_key})
-        $accessKey = null;
-        if ($paymentUrl) {
+        $accessKey = $resJson['access_key']??null;
+        if ($accessKey == null) {
             $parts = explode('/checkout/', $paymentUrl);
             if (count($parts) > 1) {
                 $accessKey = trim($parts[1]);
             }
         }
-        if (! $accessKey) {
+        if ($accessKey == null) {
             $accessKey = is_string($resJson['data'] ?? null)
                 ? $resJson['data']
                 : ($resJson['data']['access_key'] ?? ($resJson['access_key'] ?? null));
@@ -169,6 +169,7 @@ class WalletController extends Controller
                 'amount' => $amount,
                 'status' => 'PENDING',
                 'env' => 'prod',
+                'row_data' => $resJson,
             ],
         ]);
     }
@@ -224,7 +225,7 @@ class WalletController extends Controller
         }
 
         // 2. Call External Verify API
-        $url = 'https://icchhamatidataservice.com/api/pg/verify';
+        $url = 'https://icchhamatidataservice.com/api/pg/transaction';
         $postData = [
             'txnid' => $txnid,
         ];

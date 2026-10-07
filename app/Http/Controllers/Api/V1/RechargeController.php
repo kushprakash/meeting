@@ -170,7 +170,7 @@ class RechargeController extends Controller
         $user = $request->user();
         $amount = (float)$validated['amount'];
         $type = (int)($validated['type'] ?? 1);
-
+        $orderId = 'REC' . date('YmdHis') . rand(1000, 9999);
         // Map customer_id into number & biller_code into operator as per specification
         $number = $validated['number'] ?? ($validated['customer_id'] ?? null);
         $operator = $validated['operator'] ?? ($validated['biller_code'] ?? null);
@@ -209,7 +209,7 @@ class RechargeController extends Controller
                 }
 
                 $newBalance = $preBalance - $amount;
-                $orderId = 'REC' . date('YmdHis') . rand(1000, 9999);
+                
 
                 // Create Passbook DR record
                 Passbook::create([

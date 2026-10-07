@@ -19,7 +19,7 @@ class WalletController extends Controller
 
         // Get balance from last passbook row where user_id order by id desc
         $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
-        $balance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+        $balance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
         $history = Passbook::where('user_id', $user->id)
             ->latest('id')
@@ -34,7 +34,7 @@ class WalletController extends Controller
                 'balance' => $balance,
                 'transactions' => $history,
                 'passbook' => $history,
-            ]
+            ],
         ]);
     }
 
@@ -49,8 +49,8 @@ class WalletController extends Controller
         ]);
 
         $user = $request->user();
-        $amount = (float)$validated['amount'];
-        $refId = 'ORD_PG_' . time() . rand(1000, 9999);
+        $amount = (float) $validated['amount'];
+        $refId = 'ORD_PG_'.time().rand(1000, 9999);
 
         // 1. Create PENDING FundRequest record in database
         $fundRequest = FundRequest::create([
@@ -61,32 +61,39 @@ class WalletController extends Controller
         ]);
 
         // 2. Prepare Payment Gateway Request Data
-        $url = "https://icchhamatidataservice.com/api/pg/request";
+        $url = 'https://icchhamatidataservice.com/api/pg/request';
 
         $postData = [
-            "reference_id"  => $refId,
-            "amount"        => $amount,
-            "name"          => $user->name ?? 'User',
-            "email"         => $user->email ?? 'user@bestrecharge.com',
-            "mobile_number" => $user->phone ?? ($user->mobile_number ?? '9876543210'),
-            "success_url"   => "https://vidbez.com/api/v1/wallet/callback/success",
-            "failure_url"   => "https://vidbez.com/api/v1/wallet/callback/failure"
+            'reference_id' => $refId,
+            'amount' => $amount,
+            'name' => $user->name ?? 'User',
+            'email' => $user->email ?? 'user@bestrecharge.com',
+            'mobile_number' => $user->phone ?? ($user->mobile_number ?? '9876543210'),
+            'success_url' => 'https://vidbez.com/api/v1/wallet/callback/success',
+            'failure_url' => 'https://vidbez.com/api/v1/wallet/callback/failure',
         ];
 
         $headers = [
-            "Content-Type: application/json",
-            "Accept: application/json",
-            "mid: AGENT1603",
-            "mkey: F0DUe9k9TiouekW3rwuZIJkwN1fa6Lsx",
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'mid: AGENT1603',
+            'mkey: F0DUe9k9TiouekW3rwuZIJkwN1fa6Lsx',
+        ];
+
+        $initiateRequestData = [
+            'url' => $url,
+            'header' => $headers,
+            'headers' => $headers,
+            'request' => $postData,
         ];
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode($postData),
-            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($postData),
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_TIMEOUT => 30,
         ]);
 
         $responseStr = curl_exec($ch);
@@ -94,13 +101,20 @@ class WalletController extends Controller
         curl_close($ch);
 
         if ($curlError) {
+            $fundRequest->update([
+                'status' => 'FAILED',
+                'iniciate_request_data' => $initiateRequestData,
+                'iniciate_response_data' => ['curl_error' => $curlError],
+            ]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Payment Gateway cURL Error: ' . $curlError,
+                'message' => 'Payment Gateway cURL Error: '.$curlError,
             ], 500);
         }
 
-        $resJson = json_decode($responseStr, true);
+        $resJson = json_decode($responseStr, true) ?? ['raw_response' => $responseStr];
+        $initiateResponseData = $resJson;
 
         $paymentUrl = $resJson['payment_url'] ?? ($resJson['data']['payment_url'] ?? null);
 
@@ -112,20 +126,22 @@ class WalletController extends Controller
                 $accessKey = trim($parts[1]);
             }
         }
-        if (!$accessKey) {
-            $accessKey = is_string($resJson['data'] ?? null) 
-                ? $resJson['data'] 
+        if (! $accessKey) {
+            $accessKey = is_string($resJson['data'] ?? null)
+                ? $resJson['data']
                 : ($resJson['data']['access_key'] ?? ($resJson['access_key'] ?? null));
         }
 
         $st = $resJson['status'] ?? null;
-        $isSuccess = ($st === 1 || $st === '1' || $st === true || strtolower((string)$st) === 'success') 
-            || (!empty($accessKey) || !empty($paymentUrl));
+        $isSuccess = ($st === 1 || $st === '1' || $st === true || strtolower((string) $st) === 'success')
+            || (! empty($accessKey) || ! empty($paymentUrl));
 
-        if (!$isSuccess) {
+        if (! $isSuccess) {
             $fundRequest->update([
                 'status' => 'FAILED',
                 'response_json' => $resJson,
+                'iniciate_request_data' => $initiateRequestData,
+                'iniciate_response_data' => $initiateResponseData,
             ]);
 
             return response()->json([
@@ -138,6 +154,8 @@ class WalletController extends Controller
         $fundRequest->update([
             'payment_url' => $paymentUrl,
             'response_json' => $resJson,
+            'iniciate_request_data' => $initiateRequestData,
+            'iniciate_response_data' => $initiateResponseData,
         ]);
 
         return response()->json([
@@ -151,68 +169,87 @@ class WalletController extends Controller
                 'amount' => $amount,
                 'status' => 'PENDING',
                 'env' => 'prod',
-            ]
+            ],
         ]);
     }
 
     /**
      * Verify Payment Gateway Transaction & Add Funds to Wallet Passbook
+     * Supports both POST and GET methods via query param order_id/txnid/reference_id or route param order_id.
+     * GET /api/v1/wallet/verify-payment?order_id={order_id}
+     * GET /api/v1/wallet/verify-status/{order_id}
      * POST /api/v1/wallet/verify-payment
      */
-    public function verifyPayment(Request $request): JsonResponse
+    public function verifyPayment(Request $request, ?string $order_id = null): JsonResponse
     {
-        $validated = $request->validate([
-            'txnid' => 'required|string',
-        ]);
+        $txnid = $order_id
+            ?? $request->input('order_id')
+            ?? $request->input('txnid')
+            ?? $request->input('reference_id');
 
-        $txnid = $validated['txnid'];
-        $user = $request->user();
+        if (! $txnid) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The order_id or txnid parameter is required.',
+            ], 422);
+        }
 
         // 1. Check if FundRequest exists in database
         $fundRequest = FundRequest::where('reference_id', $txnid)->first();
-        if (!$fundRequest) {
+        if (! $fundRequest) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Transaction record not found for ID: ' . $txnid,
+                'message' => 'Transaction record not found for ID: '.$txnid,
             ], 404);
         }
 
         // Check if already completed to prevent duplicate credit
         if ($fundRequest->status === 'SUCCESS') {
             $lastPassbook = Passbook::where('user_id', $fundRequest->user_id)->latest('id')->first();
-            $currentBal = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+            $currentBal = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Payment already verified and credited to wallet!',
                 'data' => [
+                    'order_id' => $txnid,
                     'txnid' => $txnid,
+                    'reference_id' => $txnid,
                     'status' => 'SUCCESS',
                     'balance' => $currentBal,
-                ]
+                    'verify_request_data' => $fundRequest->verify_request_data,
+                    'verify_response_data' => $fundRequest->verify_response_data,
+                ],
             ]);
         }
 
         // 2. Call External Verify API
-        $url = "https://icchhamatidataservice.com/api/pg/verify";
+        $url = 'https://icchhamatidataservice.com/api/pg/verify';
         $postData = [
-            "txnid" => $txnid,
+            'txnid' => $txnid,
         ];
 
         $headers = [
-            "Content-Type: application/json",
-            "Accept: application/json",
-            "mid: AGENT1603",
-            "mkey: F0DUe9k9TiouekW3rwuZIJkwN1fa6Lsx",
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'mid: AGENT1603',
+            'mkey: F0DUe9k9TiouekW3rwuZIJkwN1fa6Lsx',
+        ];
+
+        $verifyRequestData = [
+            'url' => $url,
+            'header' => $headers,
+            'headers' => $headers,
+            'request' => $postData,
         ];
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode($postData),
-            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($postData),
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_TIMEOUT => 30,
         ]);
 
         $responseStr = curl_exec($ch);
@@ -220,35 +257,43 @@ class WalletController extends Controller
         curl_close($ch);
 
         if ($curlError) {
+            $fundRequest->update([
+                'verify_request_data' => $verifyRequestData,
+                'verify_response_data' => ['curl_error' => $curlError],
+            ]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Payment Verification cURL Error: ' . $curlError,
+                'message' => 'Payment Verification cURL Error: '.$curlError,
             ], 500);
         }
 
-        $resJson = json_decode($responseStr, true);
+        $resJson = json_decode($responseStr, true) ?? ['raw_response' => $responseStr];
+        $verifyResponseData = $resJson;
 
         // Check if status is success / SUCCESS
         $pgStatus = strtolower($resJson['data']['status'] ?? ($resJson['status'] ?? ''));
 
         if ($pgStatus === 'success' || $pgStatus === '1') {
-            // Update FundRequest status to SUCCESS
+            // Update FundRequest status to SUCCESS & save verify request/response data
             $fundRequest->update([
                 'status' => 'SUCCESS',
                 'response_json' => $resJson,
+                'verify_request_data' => $verifyRequestData,
+                'verify_response_data' => $verifyResponseData,
             ]);
 
             // Add money to user wallet creating CR Passbook entry
             $targetUserId = $fundRequest->user_id;
-            $amount = (float)$fundRequest->amount;
+            $amount = (float) $fundRequest->amount;
 
             $lastPassbook = Passbook::where('user_id', $targetUserId)->latest('id')->first();
-            $preBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+            $preBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
             $newBalance = $preBalance + $amount;
 
             $passbook = Passbook::create([
                 'user_id' => $targetUserId,
-                'details' => 'Added Money to Wallet (PG Ref: ' . $txnid . ')',
+                'details' => 'Added Money to Wallet (PG Ref: '.$txnid.')',
                 'type' => 'CR',
                 'pre_balance' => $preBalance,
                 'amount' => $amount,
@@ -257,14 +302,18 @@ class WalletController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Payment verified successfully! ₹' . number_format($amount, 2) . ' credited to wallet.',
+                'message' => 'Payment verified successfully! ₹'.number_format($amount, 2).' credited to wallet.',
                 'data' => [
+                    'order_id' => $txnid,
                     'txnid' => $txnid,
+                    'reference_id' => $txnid,
                     'status' => 'SUCCESS',
                     'amount' => $amount,
                     'balance' => $newBalance,
                     'passbook' => $passbook,
-                ]
+                    'verify_request_data' => $verifyRequestData,
+                    'verify_response_data' => $verifyResponseData,
+                ],
             ]);
         }
 
@@ -275,12 +324,16 @@ class WalletController extends Controller
         $fundRequest->update([
             'status' => $newStatus,
             'response_json' => $resJson,
+            'verify_request_data' => $verifyRequestData,
+            'verify_response_data' => $verifyResponseData,
         ]);
 
         return response()->json([
             'status' => 'error',
             'message' => $resJson['message'] ?? ($newStatus === 'CANCELLED' ? 'Payment was cancelled' : 'Payment verification failed'),
             'data' => $resJson,
+            'verify_request_data' => $verifyRequestData,
+            'verify_response_data' => $verifyResponseData,
         ], 400);
     }
 
@@ -295,11 +348,11 @@ class WalletController extends Controller
         ]);
 
         $user = $request->user();
-        $amount = (float)$validated['amount'];
+        $amount = (float) $validated['amount'];
 
         // Get pre_balance from last passbook row
         $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
-        $preBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+        $preBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
         $newBalance = $preBalance + $amount;
 
         $passbook = Passbook::create([
@@ -313,14 +366,14 @@ class WalletController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => '₹' . number_format($amount, 2) . ' added to wallet successfully!',
+            'message' => '₹'.number_format($amount, 2).' added to wallet successfully!',
             'data' => [
                 'user' => $user->fresh(),
                 'wallet_balance' => $newBalance,
                 'balance' => $newBalance,
                 'transaction' => $passbook,
                 'passbook' => $passbook,
-            ]
+            ],
         ]);
     }
 
@@ -332,7 +385,7 @@ class WalletController extends Controller
         $user = $request->user();
 
         $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
-        $balance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+        $balance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
         $history = Passbook::where('user_id', $user->id)->latest('id')->get();
 
@@ -344,7 +397,7 @@ class WalletController extends Controller
                 'balance' => $balance,
                 'transactions' => $history,
                 'passbook' => $history,
-            ]
+            ],
         ]);
     }
 }

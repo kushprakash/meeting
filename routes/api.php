@@ -1,9 +1,17 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminCorporateController;
+use App\Http\Controllers\Api\V1\AdminSettingController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BannerNotificationController;
+use App\Http\Controllers\Api\V1\BrandingController;
+use App\Http\Controllers\Api\V1\CorporateEmployeeController;
 use App\Http\Controllers\Api\V1\HostApprovalController;
 use App\Http\Controllers\Api\V1\MeetingController;
 use App\Http\Controllers\Api\V1\MeetingJoinController;
+use App\Http\Controllers\Api\V1\RechargeController;
+use App\Http\Controllers\Api\V1\SuperAdminController;
+use App\Http\Controllers\Api\V1\WalletController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,15 +21,17 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
-    
+
     // Auth Routes
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp']);
 
-    // Public Branding Detection (Domain / URL matching)
-    Route::get('/branding/public', [\App\Http\Controllers\Api\V1\BrandingController::class, 'detectBranding']);
+    // Public Branding & Payment Direct Verification Routes
+    Route::get('/branding/public', [BrandingController::class, 'detectBranding']);
+    Route::match(['get', 'post'], '/wallet/verify-payment-direct', [WalletController::class, 'verifyPayment']);
+    Route::get('/wallet/verify-status/{order_id}', [WalletController::class, 'verifyPayment']);
 
     // Protected Routes (Sanctum Auth Required)
     Route::middleware('auth:sanctum')->group(function () {
@@ -30,16 +40,17 @@ Route::prefix('v1')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
 
         // Wallet Routes
-        Route::get('/wallet', [\App\Http\Controllers\Api\V1\WalletController::class, 'index']);
-        Route::post('/wallet/add-money', [\App\Http\Controllers\Api\V1\WalletController::class, 'addMoney']);
-        Route::post('/wallet/initiate-payment', [\App\Http\Controllers\Api\V1\WalletController::class, 'initiatePayment']);
-        Route::post('/wallet/verify-payment', [\App\Http\Controllers\Api\V1\WalletController::class, 'verifyPayment']);
-        Route::get('/wallet/history', [\App\Http\Controllers\Api\V1\WalletController::class, 'history']);
+        Route::get('/wallet', [WalletController::class, 'index']);
+        Route::post('/wallet/add-money', [WalletController::class, 'addMoney']);
+        Route::post('/wallet/initiate-payment', [WalletController::class, 'initiatePayment']);
+        Route::match(['get', 'post'], '/wallet/verify-payment', [WalletController::class, 'verifyPayment']);
+        Route::get('/wallet/verify-payment/{order_id}', [WalletController::class, 'verifyPayment']);
+        Route::get('/wallet/history', [WalletController::class, 'history']);
 
         // Banner & Notification Routes
-        Route::get('/banners', [\App\Http\Controllers\Api\V1\BannerNotificationController::class, 'getBanners']);
-        Route::get('/notifications', [\App\Http\Controllers\Api\V1\BannerNotificationController::class, 'getNotifications']);
-        Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\V1\BannerNotificationController::class, 'markRead']);
+        Route::get('/banners', [BannerNotificationController::class, 'getBanners']);
+        Route::get('/notifications', [BannerNotificationController::class, 'getNotifications']);
+        Route::post('/notifications/{id}/read', [BannerNotificationController::class, 'markRead']);
 
         // Meeting Management
         Route::get('/meetings', [MeetingController::class, 'index']);
@@ -61,41 +72,40 @@ Route::prefix('v1')->group(function () {
         Route::post('/meetings/{uuid}/block/{participantId}', [HostApprovalController::class, 'block']);
 
         // Super Admin Management Routes
-        Route::get('/super-admin/reports', [\App\Http\Controllers\Api\V1\SuperAdminController::class, 'reports']);
-        Route::get('/super-admin/admins', [\App\Http\Controllers\Api\V1\SuperAdminController::class, 'listAdmins']);
-        Route::post('/super-admin/admins', [\App\Http\Controllers\Api\V1\SuperAdminController::class, 'createAdmin']);
-        Route::post('/super-admin/admins/{id}/permissions', [\App\Http\Controllers\Api\V1\SuperAdminController::class, 'updatePermissions']);
+        Route::get('/super-admin/reports', [SuperAdminController::class, 'reports']);
+        Route::get('/super-admin/admins', [SuperAdminController::class, 'listAdmins']);
+        Route::post('/super-admin/admins', [SuperAdminController::class, 'createAdmin']);
+        Route::post('/super-admin/admins/{id}/permissions', [SuperAdminController::class, 'updatePermissions']);
 
         // Admin Multi-Tenant & Corporate Management Routes
-        Route::get('/admin/corporates', [\App\Http\Controllers\Api\V1\AdminCorporateController::class, 'index']);
-        Route::post('/admin/corporates', [\App\Http\Controllers\Api\V1\AdminCorporateController::class, 'store']);
-        Route::post('/admin/corporates/{id}/verify', [\App\Http\Controllers\Api\V1\AdminCorporateController::class, 'verify']);
-        Route::post('/admin/corporates/assign-employee', [\App\Http\Controllers\Api\V1\AdminCorporateController::class, 'assignEmployee']);
+        Route::get('/admin/corporates', [AdminCorporateController::class, 'index']);
+        Route::post('/admin/corporates', [AdminCorporateController::class, 'store']);
+        Route::post('/admin/corporates/{id}/verify', [AdminCorporateController::class, 'verify']);
+        Route::post('/admin/corporates/assign-employee', [AdminCorporateController::class, 'assignEmployee']);
 
         // Admin Settings, Branding, SMTP, & SMS Gateway Routes
-        Route::get('/admin/settings', [\App\Http\Controllers\Api\V1\AdminSettingController::class, 'getSettings']);
-        Route::post('/admin/settings', [\App\Http\Controllers\Api\V1\AdminSettingController::class, 'updateSettings']);
+        Route::get('/admin/settings', [AdminSettingController::class, 'getSettings']);
+        Route::post('/admin/settings', [AdminSettingController::class, 'updateSettings']);
 
         // Corporate Employee Management Routes
-        Route::get('/corporate/employees', [\App\Http\Controllers\Api\V1\CorporateEmployeeController::class, 'listEmployees']);
-        Route::post('/corporate/employees', [\App\Http\Controllers\Api\V1\CorporateEmployeeController::class, 'createEmployee']);
+        Route::get('/corporate/employees', [CorporateEmployeeController::class, 'listEmployees']);
+        Route::post('/corporate/employees', [CorporateEmployeeController::class, 'createEmployee']);
         // Recharge, DTH & Bill Payment Routes
-        Route::post('/recharge/mobile-plans', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getMobilePlans']);
-        Route::post('/recharge/get-operator', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getOperators']);
-        Route::post('/recharge/mobile-recharge', [\App\Http\Controllers\Api\V1\RechargeController::class, 'doRecharge']);
-        Route::post('/recharge/recharge', [\App\Http\Controllers\Api\V1\RechargeController::class, 'doRecharge']);
-        Route::post('/recharge/recharge-status', [\App\Http\Controllers\Api\V1\RechargeController::class, 'checkSingleStatus']);
+        Route::post('/recharge/mobile-plans', [RechargeController::class, 'getMobilePlans']);
+        Route::post('/recharge/get-operator', [RechargeController::class, 'getOperators']);
+        Route::post('/recharge/mobile-recharge', [RechargeController::class, 'doRecharge']);
+        Route::post('/recharge/recharge', [RechargeController::class, 'doRecharge']);
+        Route::post('/recharge/recharge-status', [RechargeController::class, 'checkSingleStatus']);
 
         // Bill Payment Routes
-        Route::get('/recharge/bill-categories', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getBillCategories']);
-        Route::post('/recharge/billers-by-category', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getBillersByCategory']);
-        Route::post('/recharge/fetch-bill', [\App\Http\Controllers\Api\V1\RechargeController::class, 'fetchBill']);
-        Route::post('/recharge/bill-payment', [\App\Http\Controllers\Api\V1\RechargeController::class, 'doRecharge']);
-        Route::post('/recharge/bill-status', [\App\Http\Controllers\Api\V1\RechargeController::class, 'getBillStatus']);
-        Route::get('/recharge/history', [\App\Http\Controllers\Api\V1\RechargeController::class, 'history']);
+        Route::get('/recharge/bill-categories', [RechargeController::class, 'getBillCategories']);
+        Route::post('/recharge/billers-by-category', [RechargeController::class, 'getBillersByCategory']);
+        Route::post('/recharge/fetch-bill', [RechargeController::class, 'fetchBill']);
+        Route::post('/recharge/bill-payment', [RechargeController::class, 'doRecharge']);
+        Route::post('/recharge/bill-status', [RechargeController::class, 'getBillStatus']);
+        Route::get('/recharge/history', [RechargeController::class, 'history']);
     });
 
     // Public / Cron Route for Pending Recharge Status Verification
-    Route::match(['get', 'post'], '/recharge/cron-check-status', [\App\Http\Controllers\Api\V1\RechargeController::class, 'checkPendingStatus']);
+    Route::match(['get', 'post'], '/recharge/cron-check-status', [RechargeController::class, 'checkPendingStatus']);
 });
-

@@ -8,17 +8,16 @@ use App\Models\Recharge;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class RechargeController extends Controller
 {
-    private const BASE_URL = "https://icchhamatidataservice.com/api/v2";
+    private const BASE_URL = 'https://icchhamatidataservice.com/api/v2';
 
     private array $headers = [
-        "Content-Type: application/json",
-        "Accept: application/json",
-        "mid: AGENT1603",
-        "mkey: F0DUe9k9TiouekW3rwuZIJkwN1fa6Lsx",
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'mid: AGENT1603',
+        'mkey: F0DUe9k9TiouekW3rwuZIJkwN1fa6Lsx',
     ];
 
     /**
@@ -26,13 +25,13 @@ class RechargeController extends Controller
      */
     private function callExternalApi(string $endpoint, array $postData = [], string $method = 'POST'): array
     {
-        $url = rtrim(self::BASE_URL, '/') . '/' . ltrim($endpoint, '/');
+        $url = rtrim(self::BASE_URL, '/').'/'.ltrim($endpoint, '/');
 
         $ch = curl_init($url);
         $options = [
-            CURLOPT_HTTPHEADER     => $this->headers,
+            CURLOPT_HTTPHEADER => $this->headers,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 45,
+            CURLOPT_TIMEOUT => 45,
             CURLOPT_SSL_VERIFYPEER => false,
         ];
 
@@ -51,12 +50,13 @@ class RechargeController extends Controller
         if ($curlError) {
             return [
                 'success' => false,
-                'error' => 'cURL Error: ' . $curlError,
+                'error' => 'cURL Error: '.$curlError,
                 'data' => null,
             ];
         }
 
         $resJson = json_decode($responseStr, true);
+
         return [
             'success' => true,
             'error' => null,
@@ -76,7 +76,7 @@ class RechargeController extends Controller
 
         return DB::transaction(function () use ($userId, $amount, $details) {
             $lastPassbook = Passbook::where('user_id', $userId)->latest('id')->lockForUpdate()->first();
-            $preBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+            $preBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
             $newBalance = $preBalance + $amount;
 
             return Passbook::create([
@@ -105,7 +105,7 @@ class RechargeController extends Controller
             'number' => $validated['number'],
         ]);
 
-        if (!$apiResult['success']) {
+        if (! $apiResult['success']) {
             return response()->json([
                 'status' => 'error',
                 'message' => $apiResult['error'],
@@ -113,6 +113,7 @@ class RechargeController extends Controller
         }
 
         $resData = $apiResult['data'];
+
         return response()->json($resData);
     }
 
@@ -129,7 +130,7 @@ class RechargeController extends Controller
             'category' => $category,
         ]);
 
-        if (!$apiResult['success']) {
+        if (! $apiResult['success']) {
             return response()->json([
                 'status' => 'error',
                 'message' => $apiResult['error'],
@@ -168,15 +169,15 @@ class RechargeController extends Controller
         ]);
 
         $user = $request->user();
-        $amount = (float)$validated['amount'];
-        $type = (int)($validated['type'] ?? 1);
-        $orderId = 'REC' . date('YmdHis') . rand(1000, 9999);
+        $amount = (float) $validated['amount'];
+        $type = (int) ($validated['type'] ?? 1);
+        $orderId = 'REC'.date('YmdHis').rand(1000, 9999);
         // Map customer_id into number & biller_code into operator as per specification
         $number = $validated['number'] ?? ($validated['customer_id'] ?? null);
         $operator = $validated['operator'] ?? ($validated['biller_code'] ?? null);
         $circle = $validated['circle'] ?? '2';
 
-        if (!$number || !$operator) {
+        if (! $number || ! $operator) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Please provide valid number/customer_id and operator/biller_code.',
@@ -187,7 +188,7 @@ class RechargeController extends Controller
 
         // Check wallet balance first
         $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
-        $currentBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+        $currentBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
         if ($currentBalance < $amount) {
             return response()->json([
@@ -200,16 +201,15 @@ class RechargeController extends Controller
 
         // Debit Wallet & Create Pending Recharge Record in DB Transaction
         try {
-            $recharge = DB::transaction(function () use ($user, $amount, $type, $typeLabel, $number, $operator, $circle, $validated) {
+            $recharge = DB::transaction(function () use ($user, $amount, $type, $typeLabel, $number, $operator, $circle, $validated, $orderId) {
                 $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->lockForUpdate()->first();
-                $preBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+                $preBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
                 if ($preBalance < $amount) {
                     throw new \Exception('Insufficient wallet balance during lock.');
                 }
 
                 $newBalance = $preBalance - $amount;
-                
 
                 // Create Passbook DR record
                 Passbook::create([
@@ -241,7 +241,7 @@ class RechargeController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to process transaction: ' . $e->getMessage(),
+                'message' => 'Failed to process transaction: '.$e->getMessage(),
             ], 400);
         }
 
@@ -258,7 +258,7 @@ class RechargeController extends Controller
 
         $apiResult = $this->callExternalApi($apiEndpoint, $postData);
 
-        if (!$apiResult['success']) {
+        if (! $apiResult['success']) {
             // API cURL failure -> Immediate Refund
             $recharge->update([
                 'status' => Recharge::STATUS_FAILED,
@@ -267,7 +267,7 @@ class RechargeController extends Controller
             ]);
 
             $refundPassbook = $this->refundUserWallet($user->id, $amount, "Refund for Failed {$typeLabel} #{$recharge->id} ({$number})");
-            $latestBalance = $refundPassbook ? (float)$refundPassbook->balance : $currentBalance;
+            $latestBalance = $refundPassbook ? (float) $refundPassbook->balance : $currentBalance;
 
             return response()->json([
                 'status' => 'error',
@@ -276,13 +276,13 @@ class RechargeController extends Controller
                 'data' => [
                     'recharge' => $recharge->fresh(),
                     'wallet_balance' => $latestBalance,
-                ]
+                ],
             ], 500);
         }
 
         $resJson = $apiResult['data'];
         $resStatus = $resJson['status'] ?? null;
-        $isSuccess = ($resStatus === 1 || $resStatus === '1' || strtolower((string)$resStatus) === 'success');
+        $isSuccess = ($resStatus === 1 || $resStatus === '1' || strtolower((string) $resStatus) === 'success');
 
         if ($isSuccess) {
             $orderId = $resJson['data']['orderId'] ?? $recharge->order_id;
@@ -299,7 +299,7 @@ class RechargeController extends Controller
             ]);
 
             $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
-            $latestBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+            $latestBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
             return response()->json([
                 'status' => 'success',
@@ -308,7 +308,7 @@ class RechargeController extends Controller
                     'recharge' => $recharge->fresh(),
                     'provider_response' => $resJson['data'] ?? $resJson,
                     'wallet_balance' => $latestBalance,
-                ]
+                ],
             ]);
         }
 
@@ -321,7 +321,7 @@ class RechargeController extends Controller
         ]);
 
         $refundPassbook = $this->refundUserWallet($user->id, $amount, "Refund for Failed {$typeLabel} #{$recharge->id} ({$number})");
-        $latestBalance = $refundPassbook ? (float)$refundPassbook->balance : $currentBalance;
+        $latestBalance = $refundPassbook ? (float) $refundPassbook->balance : $currentBalance;
 
         return response()->json([
             'status' => 'error',
@@ -330,7 +330,7 @@ class RechargeController extends Controller
                 'recharge' => $recharge->fresh(),
                 'provider_response' => $resJson,
                 'wallet_balance' => $latestBalance,
-            ]
+            ],
         ], 400);
     }
 
@@ -350,10 +350,10 @@ class RechargeController extends Controller
             ->orWhere('txn_id', $txnid)
             ->first();
 
-        if (!$recharge) {
+        if (! $recharge) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Recharge record not found for transaction ID: ' . $txnid,
+                'message' => 'Recharge record not found for transaction ID: '.$txnid,
             ], 404);
         }
 
@@ -362,7 +362,7 @@ class RechargeController extends Controller
             'txnid' => $txnid,
         ]);
 
-        if (!$apiResult['success']) {
+        if (! $apiResult['success']) {
             return response()->json([
                 'status' => 'error',
                 'message' => $apiResult['error'],
@@ -381,7 +381,7 @@ class RechargeController extends Controller
             'data' => [
                 'recharge' => $recharge->fresh(),
                 'provider_response' => $resJson,
-            ]
+            ],
         ]);
     }
 
@@ -401,7 +401,7 @@ class RechargeController extends Controller
 
         foreach ($pendingRecharges as $recharge) {
             $txnid = $recharge->order_id ?: $recharge->txn_id;
-            if (!$txnid) {
+            if (! $txnid) {
                 continue;
             }
 
@@ -410,7 +410,7 @@ class RechargeController extends Controller
                 'txnid' => $txnid,
             ]);
 
-            if (!$apiResult['success']) {
+            if (! $apiResult['success']) {
                 continue;
             }
 
@@ -438,7 +438,7 @@ class RechargeController extends Controller
                 'success' => $successCount,
                 'failed' => $failedCount,
                 'still_pending' => $pendingCount,
-            ]
+            ],
         ]);
     }
 
@@ -451,8 +451,8 @@ class RechargeController extends Controller
     private function processStatusUpdate(Recharge $recharge, mixed $statusVal, array $resJson): int
     {
         // Convert statusVal to integer if numeric
-        $numericStatus = is_numeric($statusVal) ? (int)$statusVal : null;
-        $strStatus = strtolower((string)$statusVal);
+        $numericStatus = is_numeric($statusVal) ? (int) $statusVal : null;
+        $strStatus = strtolower((string) $statusVal);
 
         if ($numericStatus === 0 || $strStatus === 'failed' || $strStatus === '0') {
             // Status 0: FAILED -> Refund if was not already failed
@@ -467,6 +467,7 @@ class RechargeController extends Controller
                 $typeLabel = $recharge->type === 2 ? 'DTH Recharge' : ($recharge->type === 3 ? 'Bill Payment' : 'Mobile Recharge');
                 $this->refundUserWallet($recharge->user_id, $recharge->amount, "Refund for Failed {$typeLabel} #{$recharge->id} ({$recharge->number})");
             }
+
             return Recharge::STATUS_FAILED;
         }
 
@@ -480,13 +481,13 @@ class RechargeController extends Controller
             ]);
 
             // Credit 1% commission if not credited yet
-            if (!$recharge->commission_status && $recharge->amount > 0) {
+            if (! $recharge->commission_status && $recharge->amount > 0) {
                 $commission = round($recharge->amount * 0.01, 2);
 
                 if ($commission > 0) {
                     DB::transaction(function () use ($recharge, $commission) {
                         $lastPassbook = Passbook::where('user_id', $recharge->user_id)->latest('id')->lockForUpdate()->first();
-                        $preBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+                        $preBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
                         $newBalance = $preBalance + $commission;
 
                         Passbook::create([
@@ -505,6 +506,7 @@ class RechargeController extends Controller
                     });
                 }
             }
+
             return Recharge::STATUS_SUCCESS;
         }
 
@@ -512,6 +514,7 @@ class RechargeController extends Controller
         $recharge->update([
             'response_json' => $resJson,
         ]);
+
         return Recharge::STATUS_PENDING;
     }
 
@@ -523,7 +526,7 @@ class RechargeController extends Controller
     {
         $apiResult = $this->callExternalApi('bill-categories', [], 'GET');
 
-        if (!$apiResult['success']) {
+        if (! $apiResult['success']) {
             return response()->json([
                 'status' => 'error',
                 'message' => $apiResult['error'],
@@ -548,7 +551,7 @@ class RechargeController extends Controller
             'category' => $validated['category'],
         ]);
 
-        if (!$apiResult['success']) {
+        if (! $apiResult['success']) {
             return response()->json([
                 'status' => 'error',
                 'message' => $apiResult['error'],
@@ -579,7 +582,7 @@ class RechargeController extends Controller
             'customer_id' => $validated['customer_id'],
         ]);
 
-        if (!$apiResult['success']) {
+        if (! $apiResult['success']) {
             return response()->json([
                 'status' => 'error',
                 'message' => $apiResult['error'],
@@ -615,7 +618,7 @@ class RechargeController extends Controller
             'status' => 'success',
             'data' => [
                 'recharges' => $history,
-            ]
+            ],
         ]);
     }
 }

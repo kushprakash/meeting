@@ -119,7 +119,7 @@ class WalletController extends Controller
         $paymentUrl = $resJson['payment_url'] ?? ($resJson['data']['payment_url'] ?? null);
 
         // Extract access_key from payment_url (e.g. https://icchhamatidataservice.com/pg/checkout/{access_key})
-        $accessKey = $resJson['access_key']??null;
+        $accessKey = $resJson['access_key'] ?? null;
         if ($accessKey == null) {
             $parts = explode('/checkout/', $paymentUrl);
             if (count($parts) > 1) {
@@ -246,8 +246,7 @@ class WalletController extends Controller
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($postData),
+            CURLOPT_HTTPGET => true,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 30,

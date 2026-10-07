@@ -225,7 +225,7 @@ class WalletController extends Controller
         }
 
         // 2. Call External Verify API
-        $url = 'https://icchhamatidataservice.com/api/pg/transaction';
+        $url = 'https://icchhamatidataservice.com/api/pg-pending/'.$txnid;
         $postData = [
             'txnid' => $txnid,
         ];

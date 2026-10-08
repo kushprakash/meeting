@@ -1338,7 +1338,8 @@
         let mtgChartInstance = null;
 
         function handleMasterLogin(e) {
-            e.preventDefault();
+            if (e) e.preventDefault();
+            localStorage.setItem('master_logged_in', 'true');
             document.getElementById('masterLoginWrapper').style.display = 'none';
             document.getElementById('masterDashboardWrapper').classList.add('active');
             initDashboardCharts();
@@ -1346,10 +1347,20 @@
         }
 
         function handleAdminLogout() {
+            localStorage.removeItem('master_logged_in');
             document.getElementById('masterDashboardWrapper').classList.remove('active');
             document.getElementById('masterLoginWrapper').style.display = 'flex';
             showToast('Logged out of Master Admin Portal', 'info');
         }
+
+        // Auto Restore Session on Refresh / Page Load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (localStorage.getItem('master_logged_in') === 'true') {
+                document.getElementById('masterLoginWrapper').style.display = 'none';
+                document.getElementById('masterDashboardWrapper').classList.add('active');
+                initDashboardCharts();
+            }
+        });
 
         function switchAdminTab(tabName) {
             document.querySelectorAll('.sidebar-menu-btn').forEach(b => b.classList.remove('active'));

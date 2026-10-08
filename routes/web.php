@@ -34,7 +34,7 @@ Route::get('/', function () use ($handleDeploy) {
 
 // Master Admin Panel Route with Real Database Integration
 Route::get('/master', function () {
-    // 1. Users real query
+    // 1. Users query
     $users = User::latest()->get();
     $totalUsers = $users->count();
 
@@ -44,34 +44,45 @@ Route::get('/master', function () {
         $totalUserBalance += $u->wallet_balance;
     }
 
-    // 3. Meetings real query
+    // 3. Meetings & Meeting Entry Fees
     $meetings = Meeting::with(['host', 'participants.user'])->latest()->get();
     $totalMeetings = $meetings->count();
-    $completedMeetings = Meeting::where('status', 'completed')->count();
-    $scheduledMeetings = Meeting::where('status', 'scheduled')->count();
-    $expiredMeetings = Meeting::whereIn('status', ['expired', 'cancelled'])->count();
 
-    // 4. Recharges real query
+    $totalMeetingEntryFee = 0;
+    foreach ($meetings as $m) {
+        $partCount = count($m->participants ?? []);
+        $totalMeetingEntryFee += ($partCount * (float) ($m->price ?? 0));
+    }
+
+    // 4. Recharges & Bill Payments Debit Aggregates
+    $debitMobileRecharge = (float) Recharge::where('type', 1)->where('status', 1)->sum('amount');
+    $debitDthRecharge = (float) Recharge::where('type', 2)->where('status', 1)->sum('amount');
+    $debitBillPayment = (float) Recharge::where('type', 3)->where('status', 1)->sum('amount');
+
+    // 5. Total Add Fund (Total CR in Passbooks)
+    $totalAddFund = (float) Passbook::where('type', 'CR')->sum('amount');
+
+    // 6. Recent Logs
     $recharges = Recharge::with('user')->latest()->take(100)->get();
-
-    // 5. Passbooks real query
     $passbooks = Passbook::with('user')->latest()->take(100)->get();
 
     return view('master', compact(
         'users',
         'totalUsers',
         'totalUserBalance',
+        'totalMeetingEntryFee',
+        'debitMobileRecharge',
+        'debitDthRecharge',
+        'debitBillPayment',
+        'totalAddFund',
         'meetings',
         'totalMeetings',
-        'completedMeetings',
-        'scheduledMeetings',
-        'expiredMeetings',
         'recharges',
         'passbooks'
     ));
 });
 
-// Master AJAX Endpoints for Real Admin Actions
+// Master AJAX Endpoint: Fetch Meeting Participants
 Route::get('/master/meeting-participants/{id}', function ($id) {
     $meeting = Meeting::with(['participants.user', 'host'])->find($id);
 
@@ -95,6 +106,26 @@ Route::get('/master/meeting-participants/{id}', function ($id) {
     ]);
 });
 
+// Master AJAX Endpoint: Fetch Specific User Passbook History
+Route::get('/master/user-passbook/{user_id}', function ($userId) {
+    $user = User::find($userId);
+    if (! $user) {
+        return response()->json(['status' => 'error', 'message' => 'User account not found'], 404);
+    }
+
+    $passbooks = Passbook::where('user_id', $user->id)->latest('id')->get();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'user' => $user,
+            'passbooks' => $passbooks,
+            'wallet_balance' => $user->wallet_balance,
+        ],
+    ]);
+});
+
+// Master AJAX Endpoint: Add Fund to User Wallet
 Route::post('/master/add-fund', function (Request $request) {
     $validated = $request->validate([
         'email' => 'required|email',
@@ -132,6 +163,7 @@ Route::post('/master/add-fund', function (Request $request) {
     ]);
 });
 
+// Master AJAX Endpoint: Create User
 Route::post('/master/create-user', function (Request $request) {
     $validated = $request->validate([
         'name' => 'required|string|max:255',
@@ -158,6 +190,41 @@ Route::post('/master/create-user', function (Request $request) {
         'status' => 'success',
         'message' => "User {$user->name} created successfully!",
         'data' => ['user' => $user],
+    ]);
+});
+
+// Master AJAX Endpoint: Edit User
+Route::post('/master/edit-user', function (Request $request) {
+    $validated = $request->validate([
+        'user_id' => 'required|integer|exists:users,id',
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email,'.$request->user_id,
+        'phone' => 'nullable|string',
+        'account_type' => 'required|in:free,corporate',
+        'password' => 'nullable|string|min:6',
+    ]);
+
+    $user = User::findOrFail($validated['user_id']);
+    $role = ($validated['account_type'] === 'corporate') ? 'corporate_employee' : 'free_user';
+
+    $updateData = [
+        'name' => $validated['name'],
+        'email' => strtolower(trim($validated['email'])),
+        'phone' => $validated['phone'] ?? null,
+        'account_type' => $validated['account_type'],
+        'role' => $role,
+    ];
+
+    if (! empty($validated['password'])) {
+        $updateData['password'] = Hash::make($validated['password']);
+    }
+
+    $user->update($updateData);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => "User {$user->name} updated successfully!",
+        'data' => ['user' => $user->fresh()],
     ]);
 });
 

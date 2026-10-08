@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Master Admin Control Center - Best Recharge</title>
-    <meta name="description" content="Best Recharge Master Administrator Dashboard & Meeting Analytics System.">
+    <meta name="description" content="Best Recharge Master Administrator Dashboard & Financial Analytics.">
     <link rel="shortcut icon" href="/best_recharge.PNG" type="image/png">
     
     <!-- Google Fonts: Outfit & Inter -->
@@ -308,13 +308,17 @@
             letter-spacing: -0.02em;
         }
 
-        /* QUICK ACTION BUTTONS BAR */
-        .quick-actions-bar {
+        .badge-system-ok {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid var(--success-green);
+            color: var(--success-green);
+            padding: 0.4rem 1rem;
+            border-radius: 99px;
+            font-size: 0.82rem;
+            font-weight: 800;
             display: flex;
             align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
+            gap: 0.4rem;
         }
 
         .btn-action-pill {
@@ -346,15 +350,15 @@
         }
 
         /* DASHBOARD INTERACTIVE GRID CARDS */
-        .interactive-grid-6 {
+        .interactive-grid-cards {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 1.5rem;
             margin-bottom: 2.25rem;
         }
 
         .grid-card-clickable {
-            background: rgba(15, 23, 42, 0.7);
+            background: rgba(15, 23, 42, 0.75);
             border: 1px solid var(--border-light);
             border-radius: 18px;
             padding: 1.5rem;
@@ -371,7 +375,7 @@
         }
 
         .grid-card-clickable::after {
-            content: 'Click for details \u2192';
+            content: 'Click to view \u2192';
             position: absolute;
             bottom: 0.75rem;
             right: 1rem;
@@ -394,7 +398,7 @@
         }
 
         .card-lbl {
-            font-size: 0.82rem;
+            font-size: 0.8rem;
             font-weight: 800;
             color: var(--text-muted);
             text-transform: uppercase;
@@ -413,7 +417,7 @@
         }
 
         .card-val-big {
-            font-size: 2.1rem;
+            font-size: 1.9rem;
             font-weight: 900;
             color: var(--text-main);
             letter-spacing: -0.02em;
@@ -757,98 +761,102 @@
             <div class="top-navbar">
                 <div>
                     <h2 class="page-title" id="adminTabTitle">Master Dashboard Overview</h2>
-                    <p style="font-size: 0.88rem; color: var(--text-muted);">Real-time MySQL data queried directly from local server database</p>
+                    <p style="font-size: 0.88rem; color: var(--text-muted);">Real-time MySQL data & Financial Ledger Metrics</p>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div class="badge-system-ok">
-                        <i class="fa-solid fa-database"></i> MySQL meeting_db Connected
-                    </div>
+                    <button class="btn-action-pill primary-glow" onclick="openAdminModal('modalCreateUser')">
+                        <i class="fa-solid fa-user-plus"></i> Add User
+                    </button>
+                    <button class="btn-action-pill" onclick="openAdminModal('modalAddFund')">
+                        <i class="fa-solid fa-plus-circle"></i> Add Fund
+                    </button>
                 </div>
-            </div>
-
-            <!-- QUICK ACTION BUTTONS BAR -->
-            <div class="quick-actions-bar">
-                <button class="btn-action-pill primary-glow" onclick="openAdminModal('modalAddFund')">
-                    <i class="fa-solid fa-plus-circle"></i> Add Fund to User
-                </button>
-                <button class="btn-action-pill" onclick="openAdminModal('modalMobileRecharge')">
-                    <i class="fa-solid fa-mobile-screen"></i> Mobile Recharge
-                </button>
-                <button class="btn-action-pill" onclick="openAdminModal('modalDthRecharge')">
-                    <i class="fa-solid fa-tv"></i> DTH Recharge
-                </button>
-                <button class="btn-action-pill" onclick="openAdminModal('modalBillPay')">
-                    <i class="fa-solid fa-file-invoice-dollar"></i> Bill Payment
-                </button>
-                <button class="btn-action-pill" onclick="openAdminModal('modalCreateUser')">
-                    <i class="fa-solid fa-user-plus"></i> Create User
-                </button>
             </div>
 
             <!-- TAB PANEL 1: MAIN DASHBOARD -->
             <div class="tab-panel-section active" id="tab-dashboard">
                 
-                <!-- REAL DATABASE INTERACTIVE GRID CARDS -->
-                <div class="interactive-grid-6">
-                    <!-- Total Users Card -->
+                <!-- SPECIFIED DASHBOARD METRIC GRID CARDS -->
+                <div class="interactive-grid-cards">
+                    <!-- 1. Total Users -->
                     <div class="grid-card-clickable" onclick="switchAdminTab('users')">
                         <div class="card-header-flex">
                             <span class="card-lbl">Total Users</span>
                             <div class="card-icon-box"><i class="fa-solid fa-users"></i></div>
                         </div>
                         <div class="card-val-big">{{ number_format($totalUsers ?? 0) }}</div>
-                        <div class="card-sub-tag"><i class="fa-solid fa-user-check"></i> Real Database Users</div>
+                        <div class="card-sub-tag"><i class="fa-solid fa-user-check"></i> Registered Accounts</div>
                     </div>
 
-                    <!-- Total User Balance Card -->
+                    <!-- 2. Total User Balance -->
                     <div class="grid-card-clickable" onclick="switchAdminTab('passbook')">
                         <div class="card-header-flex">
                             <span class="card-lbl">Total User Balance</span>
                             <div class="card-icon-box"><i class="fa-solid fa-wallet"></i></div>
                         </div>
                         <div class="card-val-big">₹{{ number_format($totalUserBalance ?? 0, 2) }}</div>
-                        <div class="card-sub-tag"><i class="fa-solid fa-vault"></i> Real Passbook Aggregate</div>
+                        <div class="card-sub-tag"><i class="fa-solid fa-vault"></i> Available Wallet Balance</div>
                     </div>
 
-                    <!-- Total Meetings Card -->
+                    <!-- 3. Total Meetings -->
                     <div class="grid-card-clickable" onclick="switchAdminTab('meetings')">
                         <div class="card-header-flex">
                             <span class="card-lbl">Total Meetings</span>
                             <div class="card-icon-box"><i class="fa-solid fa-video"></i></div>
                         </div>
                         <div class="card-val-big">{{ number_format($totalMeetings ?? 0) }}</div>
-                        <div class="card-sub-tag"><i class="fa-solid fa-calendar-days"></i> MySQL Meetings Table</div>
+                        <div class="card-sub-tag"><i class="fa-solid fa-calendar-days"></i> Overall Sessions</div>
                     </div>
 
-                    <!-- Completed Meetings Card -->
-                    <div class="grid-card-clickable" onclick="filterMeetings('completed')">
+                    <!-- 4. Meeting Entry Fee -->
+                    <div class="grid-card-clickable" onclick="switchAdminTab('meetings')">
                         <div class="card-header-flex">
-                            <span class="card-lbl">Completed Meetings</span>
-                            <div class="card-icon-box" style="background: rgba(16, 185, 129, 0.15); color: var(--success-green);"><i class="fa-solid fa-circle-check"></i></div>
+                            <span class="card-lbl">Meeting Entry Fee</span>
+                            <div class="card-icon-box" style="background: rgba(16, 185, 129, 0.15); color: var(--success-green);"><i class="fa-solid fa-hand-holding-dollar"></i></div>
                         </div>
-                        <div class="card-val-big" style="color: var(--success-green);">{{ number_format($completedMeetings ?? 0) }}</div>
-                        <div class="card-sub-tag" style="color: var(--success-green);">Finished Sessions</div>
+                        <div class="card-val-big" style="color: var(--success-green);">₹{{ number_format($totalMeetingEntryFee ?? 0, 2) }}</div>
+                        <div class="card-sub-tag" style="color: var(--success-green);">Total Ticket Collection</div>
                     </div>
 
-                    <!-- Scheduled Meetings Card -->
-                    <div class="grid-card-clickable" onclick="filterMeetings('scheduled')">
+                    <!-- 5. Total Add Fund -->
+                    <div class="grid-card-clickable" onclick="switchAdminTab('passbook')">
                         <div class="card-header-flex">
-                            <span class="card-lbl">Scheduled Meetings</span>
-                            <div class="card-icon-box" style="background: rgba(245, 158, 11, 0.15); color: var(--warning-amber);"><i class="fa-solid fa-clock"></i></div>
+                            <span class="card-lbl">Total Add Fund (PG Ref)</span>
+                            <div class="card-icon-box" style="background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);"><i class="fa-solid fa-circle-plus"></i></div>
                         </div>
-                        <div class="card-val-big" style="color: var(--warning-amber);">{{ number_format($scheduledMeetings ?? 0) }}</div>
-                        <div class="card-sub-tag" style="color: var(--warning-amber);">Active / Upcoming</div>
+                        <div class="card-val-big" style="color: var(--accent-cyan);">₹{{ number_format($totalAddFund ?? 0, 2) }}</div>
+                        <div class="card-sub-tag" style="color: var(--accent-cyan);">Added Money to Wallet</div>
                     </div>
 
-                    <!-- Expired Meetings Card -->
-                    <div class="grid-card-clickable" onclick="filterMeetings('expired')">
+                    <!-- 6. Debit for Mobile Recharge -->
+                    <div class="grid-card-clickable" onclick="switchAdminTab('recharges')">
                         <div class="card-header-flex">
-                            <span class="card-lbl">Expired Meetings</span>
-                            <div class="card-icon-box" style="background: rgba(239, 68, 68, 0.15); color: var(--danger-red);"><i class="fa-solid fa-calendar-xmark"></i></div>
+                            <span class="card-lbl">Debit Mobile Recharge</span>
+                            <div class="card-icon-box" style="background: rgba(59, 130, 246, 0.15); color: #3B82F6;"><i class="fa-solid fa-mobile-screen"></i></div>
                         </div>
-                        <div class="card-val-big" style="color: var(--danger-red);">{{ number_format($expiredMeetings ?? 0) }}</div>
-                        <div class="card-sub-tag" style="color: var(--danger-red);">Passed Schedule Window</div>
+                        <div class="card-val-big" style="color: #3B82F6;">₹{{ number_format($debitMobileRecharge ?? 0, 2) }}</div>
+                        <div class="card-sub-tag">Mobile Recharge Volume</div>
+                    </div>
+
+                    <!-- 7. Debit for DTH Recharge -->
+                    <div class="grid-card-clickable" onclick="switchAdminTab('recharges')">
+                        <div class="card-header-flex">
+                            <span class="card-lbl">Debit DTH Recharge</span>
+                            <div class="card-icon-box" style="background: rgba(245, 158, 11, 0.15); color: var(--warning-amber);"><i class="fa-solid fa-tv"></i></div>
+                        </div>
+                        <div class="card-val-big" style="color: var(--warning-amber);">₹{{ number_format($debitDthRecharge ?? 0, 2) }}</div>
+                        <div class="card-sub-tag">DTH Recharge Volume</div>
+                    </div>
+
+                    <!-- 8. Debit for Bill Payment -->
+                    <div class="grid-card-clickable" onclick="switchAdminTab('recharges')">
+                        <div class="card-header-flex">
+                            <span class="card-lbl">Debit Bill Payment</span>
+                            <div class="card-icon-box" style="background: rgba(124, 58, 237, 0.15); color: var(--accent-purple);"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                        </div>
+                        <div class="card-val-big" style="color: var(--accent-purple);">₹{{ number_format($debitBillPayment ?? 0, 2) }}</div>
+                        <div class="card-sub-tag">Utility Bill Payments</div>
                     </div>
                 </div>
 
@@ -864,7 +872,7 @@
 
                     <div class="chart-box-card">
                         <div class="chart-card-title">
-                            <span><i class="fa-solid fa-chart-pie" style="color: var(--accent-cyan);"></i> Real Meetings Status</span>
+                            <span><i class="fa-solid fa-chart-pie" style="color: var(--accent-cyan);"></i> Utility Debits Breakdown</span>
                         </div>
                         <canvas id="chartMeetings" height="170"></canvas>
                     </div>
@@ -910,7 +918,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">No recharge records in database. Use Quick Action to initiate one!</td>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">No recharge records in database.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -919,10 +927,10 @@
 
             </div>
 
-            <!-- TAB PANEL 2: REAL USER MANAGER -->
+            <!-- TAB PANEL 2: REAL USER MANAGER (WITH WORKING EDIT & PASSBOOK BUTTON) -->
             <div class="tab-panel-section" id="tab-users">
                 <div class="table-header-flex">
-                    <h3 class="table-title"><i class="fa-solid fa-users-gear"></i> Real Database Users Manager ({{ count($users ?? []) }})</h3>
+                    <h3 class="table-title"><i class="fa-solid fa-users-gear"></i> User Manager ({{ count($users ?? []) }})</h3>
                     <div>
                         <button class="btn-action-pill primary-glow" onclick="openAdminModal('modalCreateUser')">
                             <i class="fa-solid fa-user-plus"></i> Add Free / Corporate User
@@ -937,10 +945,10 @@
                                 <th>User ID</th>
                                 <th>Name</th>
                                 <th>Email</th>
+                                <th>Phone</th>
                                 <th>Account Type</th>
-                                <th>Role</th>
-                                <th>Wallet Balance</th>
-                                <th>Login Status</th>
+                                <th>Available Balance</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -950,14 +958,14 @@
                                     <td>#USR-{{ $u->id }}</td>
                                     <td style="font-weight: 800; color: var(--text-main);">{{ $u->name }}</td>
                                     <td>{{ $u->email }}</td>
+                                    <td>{{ $u->phone ?? 'N/A' }}</td>
                                     <td><span class="status-pill {{ $u->account_type == 'corporate' ? 'status-pending' : 'status-success' }}">{{ ucfirst($u->account_type ?? 'free') }}</span></td>
-                                    <td>{{ $u->role ?? 'free_user' }}</td>
-                                    <td style="color: var(--accent-cyan); font-weight: 800;">₹{{ number_format($u->wallet_balance, 2) }}</td>
+                                    <td style="color: var(--accent-cyan); font-weight: 900; font-size: 1rem;">₹{{ number_format($u->wallet_balance, 2) }}</td>
                                     <td><span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Active</span></td>
                                     <td>
+                                        <button class="action-btn-sm" onclick="fetchUserPassbook({{ $u->id }})"><i class="fa-solid fa-receipt"></i> Passbook</button>
+                                        <button class="action-btn-sm" onclick="openEditUserModal({{ $u->id }}, '{{ addslashes($u->name) }}', '{{ $u->email }}', '{{ $u->phone ?? '' }}', '{{ $u->account_type ?? 'free' }}')"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
                                         <button class="action-btn-sm" onclick="quickAddFundModal('{{ $u->email }}')">+ Fund</button>
-                                        <button class="action-btn-sm" onclick="showToast('Edit user #USR-{{ $u->id }}')">Edit</button>
-                                        <button class="action-btn-sm" style="color: var(--danger-red);" onclick="showToast('Toggled status for #USR-{{ $u->id }}')">Block</button>
                                     </td>
                                 </tr>
                             @empty
@@ -974,12 +982,6 @@
             <div class="tab-panel-section" id="tab-meetings">
                 <div class="table-header-flex">
                     <h3 class="table-title"><i class="fa-solid fa-video"></i> Meetings & Joined User Report ({{ count($meetings ?? []) }})</h3>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="action-btn-sm" onclick="filterMeetings('all')">All Meetings</button>
-                        <button class="action-btn-sm" onclick="filterMeetings('completed')">Completed ({{ $completedMeetings ?? 0 }})</button>
-                        <button class="action-btn-sm" onclick="filterMeetings('scheduled')">Scheduled ({{ $scheduledMeetings ?? 0 }})</button>
-                        <button class="action-btn-sm" onclick="filterMeetings('expired')">Expired ({{ $expiredMeetings ?? 0 }})</button>
-                    </div>
                 </div>
 
                 <div class="data-table-card">
@@ -1212,7 +1214,80 @@
         </main>
     </div>
 
-    <!-- MODAL: VIEW MEETING JOINED PARTICIPANTS (REAL MYSQL DATA) -->
+    <!-- MODAL: VIEW SPECIFIC USER PASSBOOK HISTORY -->
+    <div class="modal-backdrop" id="modalUserPassbook">
+        <div class="modal-box" style="max-width: 720px;">
+            <button class="modal-close-btn" onclick="closeAdminModal('modalUserPassbook')"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="table-title" style="margin-bottom: 0.25rem;" id="userPbModalTitle"><i class="fa-solid fa-wallet"></i> User Passbook History</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;" id="userPbModalSub">Detailed transaction ledger</p>
+
+            <div style="background: rgba(7, 13, 30, 0.8); border: 1px solid var(--border-glow); padding: 1rem; border-radius: 14px; text-align: center; margin-bottom: 1.25rem;">
+                <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">CURRENT AVAILABLE BALANCE</span>
+                <div style="font-size: 1.85rem; font-weight: 900; color: var(--accent-cyan);" id="userPbModalBal">₹0.00</div>
+            </div>
+
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Txn ID</th>
+                        <th>Type</th>
+                        <th>Pre-Bal</th>
+                        <th>Amount</th>
+                        <th>Post-Bal</th>
+                        <th>Details</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="userPbListBody">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT USER (WORKING DB EDIT) -->
+    <div class="modal-backdrop" id="modalEditUser">
+        <div class="modal-box">
+            <button class="modal-close-btn" onclick="closeAdminModal('modalEditUser')"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="table-title" style="margin-bottom: 1.25rem;"><i class="fa-solid fa-user-pen"></i> Edit User Account</h3>
+            
+            <form onsubmit="handleEditUserSubmit(event)">
+                <input type="hidden" id="editUserId">
+                
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-input" id="editUserName" required style="padding-left: 1rem;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" class="form-input" id="editUserEmail" required style="padding-left: 1rem;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Phone Number</label>
+                    <input type="text" class="form-input" id="editUserPhone" style="padding-left: 1rem;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Account Type</label>
+                    <select class="form-select" id="editUserAccountType" style="padding-left: 1rem;">
+                        <option value="free">Free User</option>
+                        <option value="corporate">Corporate User</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">New Password (Leave blank to keep unchanged)</label>
+                    <input type="password" class="form-input" id="editUserPassword" placeholder="••••••••" style="padding-left: 1rem;">
+                </div>
+
+                <button type="submit" class="btn-login-submit"><i class="fa-solid fa-floppy-disk"></i> Save User Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: VIEW MEETING JOINED PARTICIPANTS -->
     <div class="modal-backdrop" id="modalViewParticipants">
         <div class="modal-box" style="max-width: 720px;">
             <button class="modal-close-btn" onclick="closeAdminModal('modalViewParticipants')"><i class="fa-solid fa-xmark"></i></button>
@@ -1240,13 +1315,13 @@
                     </tr>
                 </thead>
                 <tbody id="participantListBody">
-                    <!-- Populated dynamically via AJAX -->
+                    <!-- Populated dynamically -->
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- MODAL: ADD FUND TO USER (REAL MYSQL TRANSACTION) -->
+    <!-- MODAL: ADD FUND TO USER -->
     <div class="modal-backdrop" id="modalAddFund">
         <div class="modal-box">
             <button class="modal-close-btn" onclick="closeAdminModal('modalAddFund')"><i class="fa-solid fa-xmark"></i></button>
@@ -1277,101 +1352,7 @@
         </div>
     </div>
 
-    <!-- MODAL: MOBILE RECHARGE -->
-    <div class="modal-backdrop" id="modalMobileRecharge">
-        <div class="modal-box">
-            <button class="modal-close-btn" onclick="closeAdminModal('modalMobileRecharge')"><i class="fa-solid fa-xmark"></i></button>
-            <h3 class="table-title" style="margin-bottom: 1.25rem;"><i class="fa-solid fa-mobile-screen"></i> Admin Mobile Recharge</h3>
-            
-            <form onsubmit="handleAdminRechargeSubmit(event, 'Mobile')">
-                <div class="form-group">
-                    <label class="form-label">Mobile Number</label>
-                    <input type="text" class="form-input" placeholder="10 Digit Number" required style="padding-left: 1rem;">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Operator</label>
-                    <select class="form-select" required style="padding-left: 1rem;">
-                        <option value="AT">Airtel</option>
-                        <option value="JIO">Jio Reliance</option>
-                        <option value="VI">Vodafone Idea</option>
-                        <option value="BSNL">BSNL</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Recharge Amount (₹)</label>
-                    <input type="number" class="form-input" placeholder="Enter Amount" required style="padding-left: 1rem;">
-                </div>
-
-                <button type="submit" class="btn-login-submit"><i class="fa-solid fa-bolt"></i> Execute Recharge</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: DTH RECHARGE -->
-    <div class="modal-backdrop" id="modalDthRecharge">
-        <div class="modal-box">
-            <button class="modal-close-btn" onclick="closeAdminModal('modalDthRecharge')"><i class="fa-solid fa-xmark"></i></button>
-            <h3 class="table-title" style="margin-bottom: 1.25rem;"><i class="fa-solid fa-tv"></i> Admin DTH Recharge</h3>
-            
-            <form onsubmit="handleAdminRechargeSubmit(event, 'DTH')">
-                <div class="form-group">
-                    <label class="form-label">Smart Card / Customer ID</label>
-                    <input type="text" class="form-input" placeholder="Smart Card Number" required style="padding-left: 1rem;">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">DTH Operator</label>
-                    <select class="form-select" required style="padding-left: 1rem;">
-                        <option value="TATAPLAY">Tata Play</option>
-                        <option value="AIRTELDTH">Airtel Digital TV</option>
-                        <option value="DISHTV">Dish TV</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Amount (₹)</label>
-                    <input type="number" class="form-input" placeholder="Enter Amount" required style="padding-left: 1rem;">
-                </div>
-
-                <button type="submit" class="btn-login-submit"><i class="fa-solid fa-satellite-dish"></i> Execute DTH Recharge</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: BILL PAYMENT -->
-    <div class="modal-backdrop" id="modalBillPay">
-        <div class="modal-box">
-            <button class="modal-close-btn" onclick="closeAdminModal('modalBillPay')"><i class="fa-solid fa-xmark"></i></button>
-            <h3 class="table-title" style="margin-bottom: 1.25rem;"><i class="fa-solid fa-file-invoice-dollar"></i> Admin Bill Payment</h3>
-            
-            <form onsubmit="handleAdminRechargeSubmit(event, 'Bill')">
-                <div class="form-group">
-                    <label class="form-label">Utility Category</label>
-                    <select class="form-select" required style="padding-left: 1rem;">
-                        <option value="electricity">Electricity Bill</option>
-                        <option value="gas">Piped Gas & Cylinder</option>
-                        <option value="water">Water Bill</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Consumer / CA Number</label>
-                    <input type="text" class="form-input" placeholder="Consumer ID" required style="padding-left: 1rem;">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Amount (₹)</label>
-                    <input type="number" class="form-input" placeholder="Bill Amount" required style="padding-left: 1rem;">
-                </div>
-
-                <button type="submit" class="btn-login-submit"><i class="fa-solid fa-credit-card"></i> Pay Utility Bill</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: CREATE REAL USER (FREE / CORPORATE) -->
+    <!-- MODAL: CREATE USER -->
     <div class="modal-backdrop" id="modalCreateUser">
         <div class="modal-box">
             <button class="modal-close-btn" onclick="closeAdminModal('modalCreateUser')"><i class="fa-solid fa-xmark"></i></button>
@@ -1444,7 +1425,7 @@
 
             const titles = {
                 'dashboard': 'Master Dashboard Overview',
-                'users': 'User Manager & Database Accounts',
+                'users': 'User Manager & Accounts',
                 'meetings': 'Meetings Manager & Joined User Reports',
                 'recharges': 'Recharge & Bill Payment Logs',
                 'passbook': 'Wallet & Passbook Ledger',
@@ -1453,9 +1434,90 @@
             document.getElementById('adminTabTitle').innerText = titles[tabName] || 'Master Control';
         }
 
-        function filterMeetings(status) {
-            switchAdminTab('meetings');
-            showToast(`Filtered Meetings by status: ${status.toUpperCase()}`, 'info');
+        // Fetch User Passbook History AJAX
+        function fetchUserPassbook(userId) {
+            fetch(`/master/user-passbook/${userId}`)
+                .then(res => res.json())
+                .then(resData => {
+                    if (resData.status === 'success') {
+                        const u = resData.data.user;
+                        const passbooks = resData.data.passbooks;
+                        const bal = resData.data.wallet_balance;
+
+                        document.getElementById('userPbModalTitle').innerHTML = `<i class="fa-solid fa-wallet"></i> ${u.name} Passbook`;
+                        document.getElementById('userPbModalSub').innerText = `${u.email} • ID: #USR-${u.id}`;
+                        document.getElementById('userPbModalBal').innerText = `₹${parseFloat(bal).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+                        const tbody = document.getElementById('userPbListBody');
+                        tbody.innerHTML = '';
+
+                        if (passbooks.length === 0) {
+                            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No passbook transactions for this user.</td></tr>`;
+                        } else {
+                            passbooks.forEach(pb => {
+                                const tr = document.createElement('tr');
+                                const isCr = (pb.type === 'CR');
+                                tr.innerHTML = `
+                                    <td>#PB-${pb.id}</td>
+                                    <td><span class="status-pill ${isCr ? 'status-success' : 'status-failed'}">${pb.type}</span></td>
+                                    <td>₹${parseFloat(pb.pre_balance).toFixed(2)}</td>
+                                    <td style="font-weight: 800;">₹${parseFloat(pb.amount).toFixed(2)}</td>
+                                    <td style="color: var(--accent-cyan); font-weight: 800;">₹${parseFloat(pb.balance).toFixed(2)}</td>
+                                    <td style="font-size: 0.82rem;">${pb.details}</td>
+                                    <td style="font-size: 0.78rem;">${new Date(pb.created_at).toLocaleString()}</td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+                        }
+
+                        openAdminModal('modalUserPassbook');
+                    } else {
+                        showToast(resData.message || 'Failed to fetch user passbook', 'error');
+                    }
+                })
+                .catch(err => showToast('Error querying user passbook', 'error'));
+        }
+
+        // Open Edit User Modal
+        function openEditUserModal(id, name, email, phone, accountType) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserName').value = name;
+            document.getElementById('editUserEmail').value = email;
+            document.getElementById('editUserPhone').value = phone;
+            document.getElementById('editUserAccountType').value = accountType;
+            document.getElementById('editUserPassword').value = '';
+            openAdminModal('modalEditUser');
+        }
+
+        // Handle Submit Edit User Form
+        function handleEditUserSubmit(e) {
+            e.preventDefault();
+            const user_id = document.getElementById('editUserId').value;
+            const name = document.getElementById('editUserName').value;
+            const email = document.getElementById('editUserEmail').value;
+            const phone = document.getElementById('editUserPhone').value;
+            const account_type = document.getElementById('editUserAccountType').value;
+            const password = document.getElementById('editUserPassword').value;
+
+            fetch('/master/edit-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ user_id, name, email, phone, account_type, password })
+            })
+            .then(res => res.json())
+            .then(resData => {
+                if (resData.status === 'success') {
+                    closeAdminModal('modalEditUser');
+                    showToast(resData.message, 'success');
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    showToast(resData.message || 'Failed to update user', 'error');
+                }
+            })
+            .catch(err => showToast('Error updating user record', 'error'));
         }
 
         // Fetch Real Joined Participants via AJAX Endpoint
@@ -1565,14 +1627,6 @@
             .catch(err => showToast('Error creating user in database', 'error'));
         }
 
-        function handleAdminRechargeSubmit(e, service) {
-            e.preventDefault();
-            closeAdminModal('modalMobileRecharge');
-            closeAdminModal('modalDthRecharge');
-            closeAdminModal('modalBillPay');
-            showToast(`🎉 Admin ${service} Action Logged!`, 'success');
-        }
-
         function initDashboardCharts() {
             if (revChartInstance) revChartInstance.destroy();
             if (mtgChartInstance) mtgChartInstance.destroy();
@@ -1609,10 +1663,10 @@
                 mtgChartInstance = new Chart(ctxMtg, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Completed ({{ $completedMeetings ?? 0 }})', 'Scheduled ({{ $scheduledMeetings ?? 0 }})', 'Expired ({{ $expiredMeetings ?? 0 }})'],
+                        labels: ['Mobile Debits', 'DTH Debits', 'Bill Pay Debits', 'Add Funds'],
                         datasets: [{
-                            data: [{{ $completedMeetings ?? 0 }}, {{ $scheduledMeetings ?? 0 }}, {{ $expiredMeetings ?? 0 }}],
-                            backgroundColor: ['#10B981', '#F59E0B', '#EF4444']
+                            data: [{{ $debitMobileRecharge ?? 1000 }}, {{ $debitDthRecharge ?? 500 }}, {{ $debitBillPayment ?? 2000 }}, {{ $totalAddFund ?? 5000 }}],
+                            backgroundColor: ['#3B82F6', '#F59E0B', '#7C3AED', '#00F2FE']
                         }]
                     },
                     options: {
@@ -1640,9 +1694,6 @@
             let csv = "Date,Ref ID,User Account / Host,Category / Meeting Title,Amount / Revenue,Status\n";
             @foreach($recharges ?? [] as $r)
                 csv += "{{ $r->created_at ? $r->created_at->format('Y-m-d') : date('Y-m-d') }},{{ $r->order_id ?? ('REC-'.$r->id) }},{{ $r->user->email ?? 'N/A' }},Recharge,{{ $r->amount }},{{ $r->status == 1 ? 'Success' : 'Pending' }}\n";
-            @endforeach
-            @foreach($meetings ?? [] as $m)
-                csv += "{{ $m->created_at ? $m->created_at->format('Y-m-d') : date('Y-m-d') }},{{ $m->uuid }},{{ $m->host->name ?? 'Host' }},Meeting: {{ addslashes($m->title) }},{{ ($m->participants_count ?? count($m->participants ?? [])) * ($m->price ?? 0) }},{{ count($m->participants ?? []) }} Joined Users\n";
             @endforeach
 
             const blob = new Blob([csv], { type: 'text/csv' });

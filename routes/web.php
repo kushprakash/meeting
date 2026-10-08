@@ -38,11 +38,27 @@ Route::get('/master', function () {
     $users = User::latest()->get();
     $totalUsers = $users->count();
 
-    // 2. User Balances Aggregate
+    // 2. User Balances Aggregate & Utility Commission Income
     $totalUserBalance = 0;
+    $userIncomes = Passbook::where('type', 'CR')
+        ->where(function ($q) {
+            $q->where('details', 'like', '%Commission Credit for%')
+                ->orWhere('details', 'like', '%Commission Cashback%');
+        })
+        ->groupBy('user_id')
+        ->select('user_id', DB::raw('SUM(amount) as total_income'))
+        ->pluck('total_income', 'user_id');
+
     foreach ($users as $u) {
         $totalUserBalance += $u->wallet_balance;
+        $u->total_income = (float) ($userIncomes[$u->id] ?? 0.00);
     }
+
+    $totalUtilityIncome = (float) Passbook::where('type', 'CR')
+        ->where(function ($q) {
+            $q->where('details', 'like', '%Commission Credit for%')
+                ->orWhere('details', 'like', '%Commission Cashback%');
+        })->sum('amount');
 
     // 3. Meetings & Meeting Entry Fees
     $meetings = Meeting::with(['host', 'participants.user'])->latest()->get();
@@ -72,6 +88,7 @@ Route::get('/master', function () {
         'users',
         'totalUsers',
         'totalUserBalance',
+        'totalUtilityIncome',
         'totalMeetingEntryFee',
         'debitMobileRecharge',
         'debitMobileRechargeRefund',

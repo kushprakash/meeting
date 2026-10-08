@@ -301,7 +301,7 @@ class RechargeController extends Controller
             $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
             $currentBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
-            $commission=$amount/100*1;
+            $commission = $amount / 100 * 1;
 
             Passbook::create([
                 'user_id' => $user->id,
@@ -309,9 +309,8 @@ class RechargeController extends Controller
                 'type' => 'CR',
                 'pre_balance' => $currentBalance,
                 'amount' => $commission,
-                'balance' => $currentBalance+$commission,
+                'balance' => $currentBalance + $commission,
             ]);
-
 
             $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
             $latestBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
@@ -470,8 +469,8 @@ class RechargeController extends Controller
         $strStatus = strtolower((string) $statusVal);
 
         $typeLabel = $recharge->type === 2 ? 'DTH Recharge' : ($recharge->type === 3 ? 'Bill Payment' : 'Mobile Recharge');
-        $number=$recharge->number;
-        $operator=$recharge->operator;
+        $number = $recharge->number;
+        $operator = $recharge->operator;
         if ($numericStatus === 0 || $strStatus === 'failed' || $strStatus === '0') {
             // Status 0: FAILED -> Refund if was not already failed
             if ($recharge->status !== Recharge::STATUS_FAILED) {
@@ -482,7 +481,6 @@ class RechargeController extends Controller
                     'response_json' => $resJson,
                 ]);
 
-               
                 $this->refundUserWallet($recharge->user_id, $recharge->amount, "Refund for Failed {$typeLabel} #{$recharge->id} ({$recharge->number})");
             }
 

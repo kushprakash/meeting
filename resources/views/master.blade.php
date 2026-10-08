@@ -996,6 +996,16 @@
                         <div class="card-val-big" style="color: var(--accent-purple);">₹{{ number_format($debitBillPayment - $debitBillPaymentRefund ?? 0, 2) }}</div>
                         <div class="card-sub-tag">Utility Bill Payments</div>
                     </div>
+
+                    <!-- 9. Utility Income -->
+                    <div class="grid-card-clickable" onclick="switchAdminTab('users')">
+                        <div class="card-header-flex">
+                            <span class="card-lbl">Utility Income</span>
+                            <div class="card-icon-box" style="background: rgba(16, 185, 129, 0.15); color: var(--success-green);"><i class="fa-solid fa-sack-dollar"></i></div>
+                        </div>
+                        <div class="card-val-big" style="color: var(--success-green);">₹{{ number_format($totalUtilityIncome ?? 0, 2) }}</div>
+                        <div class="card-sub-tag" style="color: var(--success-green);"><i class="fa-solid fa-arrow-trend-up"></i> Total User Commission Income</div>
+                    </div>
                 </div>
 
        
@@ -1023,6 +1033,7 @@
                                 <th>Phone</th>
                                 <th>Account Type</th>
                                 <th>Available Balance</th>
+                                <th>Total Income</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -1036,6 +1047,7 @@
                                     <td>{{ $u->phone ?? 'N/A' }}</td>
                                     <td><span class="status-pill {{ $u->account_type == 'corporate' ? 'status-pending' : 'status-success' }}">{{ ucfirst($u->account_type ?? 'free') }}</span></td>
                                     <td style="color: var(--accent-cyan); font-weight: 900; font-size: 1rem;">₹{{ number_format($u->wallet_balance, 2) }}</td>
+                                    <td style="color: var(--success-green); font-weight: 900; font-size: 1rem;">₹{{ number_format($u->total_income ?? 0, 2) }}</td>
                                     <td><span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Active</span></td>
                                     <td>
                                         <button class="action-btn-sm" onclick="fetchUserPassbook({{ $u->id }})"><i class="fa-solid fa-receipt"></i> Passbook</button>
@@ -1045,7 +1057,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" style="text-align: center; color: var(--text-muted);">No users found in database.</td>
+                                    <td colspan="9" style="text-align: center; color: var(--text-muted);">No users found in database.</td>
                                 </tr>
                             @endforelse
                         </tbody>

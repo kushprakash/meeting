@@ -34,8 +34,8 @@ Route::get('/', function () use ($handleDeploy) {
 
 // Master Admin Panel Route with Real Database Integration
 Route::get('/master', function (Request $request) {
-    // 1. Users query
-    $users = User::latest()->where('role','!=','super_admin')->orWhere('role','!=','admin')->get();
+    // 1. Users query (Excluding super_admin and admin)
+    $users = User::whereNotIn('role', ['super_admin', 'admin'])->latest()->get();
     $totalUsers = $users->count();
 
     // 2. User Balances Aggregate, Utility Income & Total Add Fund

@@ -1033,6 +1033,7 @@
                                 <th>Phone</th>
                                 <th>Account Type</th>
                                 <th>Available Balance</th>
+                                <th>Total Add Fund</th>
                                 <th>Total Income</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -1047,6 +1048,7 @@
                                     <td>{{ $u->phone ?? 'N/A' }}</td>
                                     <td><span class="status-pill {{ $u->account_type == 'corporate' ? 'status-pending' : 'status-success' }}">{{ ucfirst($u->account_type ?? 'free') }}</span></td>
                                     <td style="color: var(--accent-cyan); font-weight: 900; font-size: 1rem;">₹{{ number_format($u->wallet_balance, 2) }}</td>
+                                    <td style="color: var(--accent-cyan); font-weight: 900; font-size: 1rem;">₹{{ number_format($u->total_add_fund ?? 0, 2) }}</td>
                                     <td style="color: var(--success-green); font-weight: 900; font-size: 1rem;">₹{{ number_format($u->total_income ?? 0, 2) }}</td>
                                     <td><span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Active</span></td>
                                     <td>
@@ -1057,7 +1059,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="9" style="text-align: center; color: var(--text-muted);">No users found in database.</td>
+                                    <td colspan="10" style="text-align: center; color: var(--text-muted);">No users found in database.</td>
                                 </tr>
                             @endforelse
                         </tbody>

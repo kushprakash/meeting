@@ -38,7 +38,7 @@ Route::get('/master', function () {
     $users = User::latest()->get();
     $totalUsers = $users->count();
 
-    // 2. User Balances Aggregate & Utility Commission Income
+    // 2. User Balances Aggregate, Utility Income & Total Add Fund
     $totalUserBalance = 0;
     $userIncomes = Passbook::where('type', 'CR')
         ->where(function ($q) {
@@ -49,9 +49,20 @@ Route::get('/master', function () {
         ->select('user_id', DB::raw('SUM(amount) as total_income'))
         ->pluck('total_income', 'user_id');
 
+    $userAddFunds = Passbook::where('type', 'CR')
+        ->where(function ($q) {
+            $q->where('details', 'like', '%Added Money to Wallet%')
+                ->orWhere('details', 'like', '%Admin Manual Wallet Credit%')
+                ->orWhere('details', 'like', '%Added Money%');
+        })
+        ->groupBy('user_id')
+        ->select('user_id', DB::raw('SUM(amount) as total_add_fund'))
+        ->pluck('total_add_fund', 'user_id');
+
     foreach ($users as $u) {
         $totalUserBalance += $u->wallet_balance;
         $u->total_income = (float) ($userIncomes[$u->id] ?? 0.00);
+        $u->total_add_fund = (float) ($userAddFunds[$u->id] ?? 0.00);
     }
 
     $totalUtilityIncome = (float) Passbook::where('type', 'CR')

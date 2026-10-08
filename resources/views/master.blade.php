@@ -822,7 +822,7 @@
                     <!-- 5. Total Add Fund -->
                     <div class="grid-card-clickable" onclick="switchAdminTab('passbook')">
                         <div class="card-header-flex">
-                            <span class="card-lbl">Total Add Fund (PG Ref)</span>
+                            <span class="card-lbl">Total Add Fund</span>
                             <div class="card-icon-box" style="background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan);"><i class="fa-solid fa-circle-plus"></i></div>
                         </div>
                         <div class="card-val-big" style="color: var(--accent-cyan);">₹{{ number_format($totalAddFund ?? 0, 2) }}</div>

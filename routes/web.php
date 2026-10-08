@@ -60,7 +60,7 @@ Route::get('/master', function () {
 
 
     // 5. Total Add Fund (Total CR in Passbooks)
-    $totalAddFund = (float) Passbook::where('type', 'DR')->where('details', 'like', '%Added Money to Wallet (PG%')->sum('amount');
+    $totalAddFund = (float) Passbook::where('type', 'DR')->where('details', 'like', '%Added Money to Wallet%')->sum('amount');
 
     // 6. Recent Logs
     $recharges = Recharge::with('user')->latest()->take(100)->get();

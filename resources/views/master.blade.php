@@ -1063,7 +1063,7 @@
                     <table class="custom-table">
                         <thead>
                             <tr>
-                                <th>Meeting Title & UUID</th>
+                                <th>Meeting Details</th>
                                 <th>Host Name</th>
                                 <th>Status</th>
                                 <th>Ticket Price</th>
@@ -1081,10 +1081,25 @@
                                 @endphp
                                 <tr>
                                     <td>
-                                        <div style="font-weight: 800; color: var(--text-main);">{{ $m->title }}</div>
-                                        <div style="font-size: 0.78rem; color: var(--text-muted);">{{ $m->uuid }} • {{ ucfirst($m->visibility ?? 'public') }}</div>
+                                        <div style="font-weight: 900; font-size: 1.05rem; color: var(--text-main); margin-bottom: 0.25rem;">
+                                            <i class="fa-solid fa-video" style="color: var(--accent-cyan); margin-right: 0.35rem;"></i>{{ $m->title }}
+                                        </div>
+                                        @if(! empty($m->description))
+                                            <div style="font-weight: 700; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+                                                <strong>Description:</strong> <span style="font-weight: 800; color: var(--text-main);">{{ $m->description }}</span>
+                                            </div>
+                                        @endif
+                                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.2rem;">
+                                            <strong>Host Name:</strong> <span style="font-weight: 800; color: var(--accent-cyan);">{{ $m->host->name ?? 'System Host' }}</span>
+                                        </div>
+                                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.2rem;">
+                                            <strong>Meeting End At:</strong> <span style="font-weight: 800; color: var(--text-main);">{{ $m->ends_at ? $m->ends_at->format('d M Y, h:i A') : 'N/A' }}</span>
+                                        </div>
+                                        <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 0.25rem;">
+                                            UUID: {{ $m->uuid }} • {{ ucfirst($m->visibility ?? 'public') }}
+                                        </div>
                                     </td>
-                                    <td>{{ $m->host->name ?? 'System Host' }}</td>
+                                    <td><strong style="color: var(--text-main);">{{ $m->host->name ?? 'System Host' }}</strong></td>
                                     <td>
                                         @if($m->status == 'completed')
                                             <span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Completed</span>

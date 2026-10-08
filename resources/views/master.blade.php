@@ -911,22 +911,7 @@
                 </div>
             </div>
 
-            <div class="top-navbar">
-                <div>
-                    <h2 class="page-title" id="adminTabTitle">Master Dashboard Overview</h2>
-                    <p style="font-size: 0.88rem; color: var(--text-muted);">Real-time MySQL data & Financial Ledger Metrics</p>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <button class="btn-action-pill primary-glow" onclick="openAdminModal('modalCreateUser')">
-                        <i class="fa-solid fa-user-plus"></i> Add User
-                    </button>
-                    <button class="btn-action-pill" onclick="openAdminModal('modalAddFund')">
-                        <i class="fa-solid fa-plus-circle"></i> Add Fund
-                    </button>
-                </div>
-            </div>
-
+           
             <!-- TAB PANEL 1: MAIN DASHBOARD -->
             <div class="tab-panel-section active" id="tab-dashboard">
                 

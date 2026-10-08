@@ -860,70 +860,7 @@
                     </div>
                 </div>
 
-                <!-- CHARTS ROW -->
-                <div class="charts-row-2">
-                    <div class="chart-box-card">
-                        <div class="chart-card-title">
-                            <span><i class="fa-solid fa-chart-area" style="color: var(--accent-cyan);"></i> Database Volume & Passbook Growth</span>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">Real Records</span>
-                        </div>
-                        <canvas id="chartRevenue" height="110"></canvas>
-                    </div>
-
-                    <div class="chart-box-card">
-                        <div class="chart-card-title">
-                            <span><i class="fa-solid fa-chart-pie" style="color: var(--accent-cyan);"></i> Utility Debits Breakdown</span>
-                        </div>
-                        <canvas id="chartMeetings" height="170"></canvas>
-                    </div>
-                </div>
-
-                <!-- REAL RECHARGES LOG TABLE -->
-                <div class="data-table-card">
-                    <div class="table-header-flex">
-                        <h3 class="table-title"><i class="fa-solid fa-receipt"></i> Real Database Recharges & Bill Payments</h3>
-                        <button class="action-btn-sm" onclick="switchAdminTab('recharges')">View All ({{ count($recharges ?? []) }}) &rarr;</button>
-                    </div>
-
-                    <table class="custom-table">
-                        <thead>
-                            <tr>
-                                <th>Order ID</th>
-                                <th>User</th>
-                                <th>Service / Type</th>
-                                <th>Number / ID</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Created At</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($recharges ?? [] as $r)
-                                <tr>
-                                    <td>{{ $r->order_id ?? ('REC-'.$r->id) }}</td>
-                                    <td>{{ $r->user->name ?? ($r->user->email ?? 'Guest') }}</td>
-                                    <td>{{ $r->type == 1 ? 'Mobile Recharge' : ($r->type == 2 ? 'DTH Recharge' : 'Bill Payment') }}</td>
-                                    <td>{{ $r->number }} ({{ $r->operator ?? 'NA' }})</td>
-                                    <td style="color: var(--accent-cyan); font-weight: 800;">₹{{ number_format($r->amount, 2) }}</td>
-                                    <td>
-                                        @if($r->status == 1)
-                                            <span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Success</span>
-                                        @elseif($r->status == 2)
-                                            <span class="status-pill status-pending"><i class="fa-solid fa-clock"></i> Pending</span>
-                                        @else
-                                            <span class="status-pill status-failed"><i class="fa-solid fa-circle-xmark"></i> Failed</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $r->created_at ? $r->created_at->format('d M Y, h:i A') : 'N/A' }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">No recharge records in database.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+       
 
             </div>
 

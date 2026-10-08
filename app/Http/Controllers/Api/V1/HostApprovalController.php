@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\JoinApproved;
 use App\Http\Controllers\Controller;
 use App\Models\Meeting;
 use App\Models\MeetingParticipant;
+use App\Models\User;
 use App\Services\LiveKitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,9 +30,9 @@ class HostApprovalController extends Controller
     {
         $meeting = Meeting::where('uuid', $uuid)->firstOrFail();
         $user = $request->user();
-        
+
         $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
-        if (!$isHost) {
+        if (! $isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
@@ -43,7 +45,7 @@ class HostApprovalController extends Controller
             'status' => 'success',
             'data' => [
                 'pending_requests' => $pending,
-            ]
+            ],
         ]);
     }
 
@@ -56,7 +58,7 @@ class HostApprovalController extends Controller
         $host = $request->user();
 
         $isHost = $host && ($meeting->host_id === $host->id || strtolower($meeting->host?->email) === strtolower($host->email));
-        if (!$isHost) {
+        if (! $isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
@@ -65,8 +67,8 @@ class HostApprovalController extends Controller
             ->firstOrFail();
 
         // Auto-link user_id if missing
-        if (!$participant->user_id && $participant->email) {
-            $targetUser = \App\Models\User::where('email', strtolower($participant->email))->first();
+        if (! $participant->user_id && $participant->email) {
+            $targetUser = User::where('email', strtolower($participant->email))->first();
             if ($targetUser) {
                 $participant->user_id = $targetUser->id;
             }
@@ -82,7 +84,7 @@ class HostApprovalController extends Controller
         $token = null;
         if ($participant->user) {
             $token = $this->liveKitService->generateToken($meeting, $participant->user, $participant->role);
-            \App\Events\JoinApproved::dispatch($participant, $token, $this->liveKitService->getHostUrl());
+            JoinApproved::dispatch($participant, $token, $this->liveKitService->getHostUrl());
         }
 
         return response()->json([
@@ -92,7 +94,7 @@ class HostApprovalController extends Controller
                 'participant' => $participant->fresh(['user:id,name,email']),
                 'token' => $token,
                 'livekit_host' => $this->liveKitService->getHostUrl(),
-            ]
+            ],
         ]);
     }
 
@@ -105,7 +107,7 @@ class HostApprovalController extends Controller
         $user = $request->user();
 
         $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
-        if (!$isHost) {
+        if (! $isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
@@ -123,7 +125,7 @@ class HostApprovalController extends Controller
             'message' => 'Participant request rejected',
             'data' => [
                 'participant' => $participant,
-            ]
+            ],
         ]);
     }
 
@@ -136,7 +138,7 @@ class HostApprovalController extends Controller
         $user = $request->user();
 
         $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
-        if (!$isHost) {
+        if (! $isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
@@ -154,7 +156,7 @@ class HostApprovalController extends Controller
             'message' => 'Participant removed from meeting',
             'data' => [
                 'participant' => $participant,
-            ]
+            ],
         ]);
     }
 
@@ -167,7 +169,7 @@ class HostApprovalController extends Controller
         $user = $request->user();
 
         $isHost = $user && ($meeting->host_id === $user->id || strtolower($meeting->host?->email) === strtolower($user->email));
-        if (!$isHost) {
+        if (! $isHost) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Host only.'], 403);
         }
 
@@ -184,7 +186,7 @@ class HostApprovalController extends Controller
             'message' => 'Participant blocked successfully',
             'data' => [
                 'participant' => $participant,
-            ]
+            ],
         ]);
     }
 }

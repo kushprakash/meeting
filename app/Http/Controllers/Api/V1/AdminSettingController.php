@@ -15,12 +15,12 @@ class AdminSettingController extends Controller
     public function getSettings(Request $request): JsonResponse
     {
         $admin = $request->user();
-        if (!$admin->isAdmin()) {
+        if (! $admin->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Admin access required.'], 403);
         }
 
         $setting = Setting::where('admin_id', $admin->id)->first();
-        if (!$setting) {
+        if (! $setting) {
             $setting = Setting::cloneFromSuperAdmin($admin->id);
         }
 
@@ -28,7 +28,7 @@ class AdminSettingController extends Controller
             'status' => 'success',
             'data' => [
                 'setting' => $setting,
-            ]
+            ],
         ]);
     }
 
@@ -38,12 +38,12 @@ class AdminSettingController extends Controller
     public function updateSettings(Request $request): JsonResponse
     {
         $admin = $request->user();
-        if (!$admin->isAdmin()) {
+        if (! $admin->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Admin access required.'], 403);
         }
 
         $setting = Setting::where('admin_id', $admin->id)->first();
-        if (!$setting) {
+        if (! $setting) {
             $setting = Setting::cloneFromSuperAdmin($admin->id);
         }
 
@@ -84,7 +84,7 @@ class AdminSettingController extends Controller
             'message' => 'Admin settings & white-label branding updated successfully.',
             'data' => [
                 'setting' => $setting->fresh(),
-            ]
+            ],
         ]);
     }
 }

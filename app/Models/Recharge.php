@@ -11,11 +11,15 @@ class Recharge extends Model
     use HasFactory;
 
     const STATUS_FAILED = 0;
+
     const STATUS_SUCCESS = 1;
+
     const STATUS_PENDING = 2;
 
     const TYPE_MOBILE = 1;
+
     const TYPE_DTH = 2;
+
     const TYPE_BILL = 3;
 
     protected $fillable = [

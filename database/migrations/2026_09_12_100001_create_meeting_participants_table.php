@@ -25,7 +25,7 @@ return new class extends Migration
                 'joined',
                 'left',
                 'removed',
-                'blocked'
+                'blocked',
             ])->default('pending');
 
             $table->timestamp('invited_at')->nullable();

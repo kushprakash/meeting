@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Create passbooks table
-        if (!Schema::hasTable('passbooks')) {
+        if (! Schema::hasTable('passbooks')) {
             Schema::create('passbooks', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained('users')->onDelete('cascade');

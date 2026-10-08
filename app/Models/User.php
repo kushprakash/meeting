@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'phone', 'email', 'password', 'provider', 'provider_id', 'avatar', 'account_type', 'role', 'corporate_id', 'admin_id', 'is_verified', 'permissions', 'designation', 'otp_code', 'otp_expires_at', 'email_verified_at'])]
@@ -37,7 +36,8 @@ class User extends Authenticatable
     public function getWalletBalanceAttribute(): float
     {
         $lastPassbook = Passbook::where('user_id', $this->id)->latest('id')->first();
-        return $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+
+        return $lastPassbook ? (float) $lastPassbook->balance : 0.00;
     }
 
     public function getBalanceAttribute(): float
@@ -65,9 +65,10 @@ class User extends Authenticatable
         if ($this->isSuperAdmin()) {
             return true;
         }
-        if (!$this->permissions) {
+        if (! $this->permissions) {
             return true; // Default full access for admin unless specified
         }
+
         return in_array($permission, $this->permissions);
     }
 }

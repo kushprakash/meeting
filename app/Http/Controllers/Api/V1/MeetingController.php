@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
 use App\Models\Meeting;
 use App\Models\MeetingParticipant;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -38,26 +40,26 @@ class MeetingController extends Controller
         $host = $request->user();
 
         // Check if user has corporate account type or corporate role to host meetings
-        $isCorporate = ($host->account_type === 'corporate') 
-            || ($host->role === 'corporate_employee') 
-            || ($host->role === 'super_admin') 
+        $isCorporate = ($host->account_type === 'corporate')
+            || ($host->role === 'corporate_employee')
+            || ($host->role === 'super_admin')
             || ($host->role === 'admin');
 
-        if (!$isCorporate) {
+        if (! $isCorporate) {
             return response()->json([
                 'status' => 'error',
                 'code' => 'HOST_REQUIRED',
-                'message' => 'Only Host account users can host meetings. Please upgrade your account to Host.'
+                'message' => 'Only Host account users can host meetings. Please upgrade your account to Host.',
             ], 403);
         }
 
-        $startsAt = !empty($validated['starts_at']) ? \Carbon\Carbon::parse($validated['starts_at']) : now();
-        $durationMinutes = !empty($validated['duration_minutes']) ? (int)$validated['duration_minutes'] : 60; // Standard 60 mins default if not scheduled
-        $endsAt = !empty($validated['ends_at']) 
-            ? \Carbon\Carbon::parse($validated['ends_at']) 
+        $startsAt = ! empty($validated['starts_at']) ? Carbon::parse($validated['starts_at']) : now();
+        $durationMinutes = ! empty($validated['duration_minutes']) ? (int) $validated['duration_minutes'] : 60; // Standard 60 mins default if not scheduled
+        $endsAt = ! empty($validated['ends_at'])
+            ? Carbon::parse($validated['ends_at'])
             : (clone $startsAt)->addMinutes($durationMinutes);
 
-        $price = isset($validated['price']) ? (float)$validated['price'] : 0.00;
+        $price = isset($validated['price']) ? (float) $validated['price'] : 0.00;
         $visibility = $validated['visibility'] ?? 'public';
 
         $meeting = Meeting::create([
@@ -90,16 +92,16 @@ class MeetingController extends Controller
         ]);
 
         // Create notification for all users about the new meeting
-        \App\Models\AppNotification::create([
+        AppNotification::create([
             'user_id' => null, // Global
-            'title' => 'New Meeting Created: ' . $meeting->title,
-            'message' => 'Join fee: ₹' . number_format($price, 2) . ' | Host: ' . $host->name,
+            'title' => 'New Meeting Created: '.$meeting->title,
+            'message' => 'Join fee: ₹'.number_format($price, 2).' | Host: '.$host->name,
             'type' => 'meeting_created',
             'meeting_uuid' => $meeting->uuid,
         ]);
 
         // Add invited emails for both private and public meetings
-        if (!empty($validated['invited_emails'])) {
+        if (! empty($validated['invited_emails'])) {
             foreach ($validated['invited_emails'] as $email) {
                 $cleanEmail = strtolower(trim($email));
                 if ($cleanEmail === $host->email) {
@@ -128,7 +130,7 @@ class MeetingController extends Controller
             'message' => 'Meeting created successfully',
             'data' => [
                 'meeting' => $meeting->load(['host:id,name,email', 'participants']),
-            ]
+            ],
         ], 201);
     }
 
@@ -144,7 +146,7 @@ class MeetingController extends Controller
         Meeting::where('status', 'active')
             ->where(function ($q) use ($now) {
                 $q->where('ends_at', '<', $now)
-                  ->orWhere('created_at', '<', $now->copy()->subHours(24));
+                    ->orWhere('created_at', '<', $now->copy()->subHours(24));
             })
             ->update(['status' => 'ended']);
 
@@ -153,17 +155,18 @@ class MeetingController extends Controller
             ->latest()
             ->get()
             ->map(function ($m) use ($now) {
-                $m->is_expired = ($m->status === 'ended') 
+                $m->is_expired = ($m->status === 'ended')
                     || ($m->ends_at && $now->gt($m->ends_at))
                     || ($m->created_at && $now->diffInHours($m->created_at) >= 24);
+
                 return $m;
             });
 
         $userEmail = strtolower(trim($user->email));
         $invitedMeetingIds = MeetingParticipant::where(function ($q) use ($user, $userEmail) {
             $q->where('user_id', $user->id)
-              ->orWhere('email', $userEmail)
-              ->orWhere('email', $user->email);
+                ->orWhere('email', $userEmail)
+                ->orWhere('email', $user->email);
         })->pluck('meeting_id');
 
         $participating = Meeting::whereIn('id', $invitedMeetingIds)
@@ -172,9 +175,10 @@ class MeetingController extends Controller
             ->latest()
             ->get()
             ->map(function ($m) use ($now) {
-                $m->is_expired = ($m->status === 'ended') 
+                $m->is_expired = ($m->status === 'ended')
                     || ($m->ends_at && $now->gt($m->ends_at))
                     || ($m->created_at && $now->diffInHours($m->created_at) >= 24);
+
                 return $m;
             });
 
@@ -183,7 +187,7 @@ class MeetingController extends Controller
             'data' => [
                 'hosted' => $hosted,
                 'participating' => $participating,
-            ]
+            ],
         ]);
     }
 
@@ -220,7 +224,7 @@ class MeetingController extends Controller
                 'is_started' => $isStarted,
                 'remaining_seconds' => 3600,
                 'starts_in_seconds' => 0,
-            ]
+            ],
         ]);
     }
 
@@ -245,7 +249,7 @@ class MeetingController extends Controller
             $myParticipant = MeetingParticipant::where('meeting_id', $meeting->id)
                 ->where(function ($q) use ($user) {
                     $q->where('user_id', $user->id)
-                      ->orWhere('email', strtolower($user->email));
+                        ->orWhere('email', strtolower($user->email));
                 })->first();
         }
 
@@ -264,7 +268,7 @@ class MeetingController extends Controller
             return $p->role === 'host' || $p->user_id === $meeting->host_id;
         });
 
-        if (!$hasHost && $meeting->host) {
+        if (! $hasHost && $meeting->host) {
             $hostParticipant = MeetingParticipant::firstOrCreate(
                 [
                     'meeting_id' => $meeting->id,
@@ -312,7 +316,7 @@ class MeetingController extends Controller
                 'is_expired' => $isExpired,
                 'my_status' => $myStatus,
                 'is_kicked_or_removed' => $isKickedOrRemoved,
-            ]
+            ],
         ]);
     }
 
@@ -327,7 +331,7 @@ class MeetingController extends Controller
         if ($meeting->host_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized. Only host can invite participants.'
+                'message' => 'Unauthorized. Only host can invite participants.',
             ], 403);
         }
 
@@ -361,7 +365,7 @@ class MeetingController extends Controller
             'message' => 'Invited participants updated successfully',
             'data' => [
                 'participants' => $added,
-            ]
+            ],
         ]);
     }
 
@@ -376,7 +380,7 @@ class MeetingController extends Controller
         if ($meeting->host_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized.'
+                'message' => 'Unauthorized.',
             ], 403);
         }
 
@@ -385,7 +389,7 @@ class MeetingController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Invitation revoked successfully'
+            'message' => 'Invitation revoked successfully',
         ]);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\SocialAuthController;
 use Illuminate\Support\Facades\Route;
 
 $handleDeploy = function () {
@@ -19,6 +20,7 @@ Route::get('/', function () use ($handleDeploy) {
     if (request()->has('token')) {
         $handleDeploy();
     }
+
     return view('welcome');
 });
 
@@ -29,5 +31,5 @@ Route::get('/meeting/{uuid}', function () {
     return view('welcome');
 });
 
-Route::get('/auth/{provider}/redirect', [App\Http\Controllers\Api\V1\SocialAuthController::class, 'redirectToProvider']);
-Route::get('/auth/{provider}/callback', [App\Http\Controllers\Api\V1\SocialAuthController::class, 'handleProviderCallback']);
+Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirectToProvider']);
+Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'handleProviderCallback']);

@@ -9,7 +9,9 @@ use Firebase\JWT\JWT;
 class LiveKitService
 {
     protected string $apiKey;
+
     protected string $apiSecret;
+
     protected string $hostUrl;
 
     public function __construct()
@@ -53,7 +55,7 @@ class LiveKitService
             'canPublishData' => $canPublishData,
         ];
 
-        if (!empty($sources)) {
+        if (! empty($sources)) {
             $videoGrant['canPublishSources'] = $sources;
         }
 

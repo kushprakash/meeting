@@ -60,12 +60,12 @@ class DatabaseSeeder extends Seeder
                     ['icon' => 'fa-solid fa-video', 'title' => 'Ultra HD Video Conferencing', 'desc' => '1080p WebRTC streaming powered by low-latency Go SFU engine with 0 packet loss.'],
                     ['icon' => 'fa-solid fa-shield-halved', 'title' => '12-Step Access Control', 'desc' => 'Strict private email invitations and real-time host waiting room approval controls.'],
                     ['icon' => 'fa-solid fa-desktop', 'title' => '4K Screen Sharing & Canvas', 'desc' => 'High frame-rate display sharing with multi-participant video canvas rendering.'],
-                    ['icon' => 'fa-solid fa-palette', 'title' => 'White-Label Multi-Tenancy', 'desc' => 'Complete corporate identity matching custom domain origins and theme palettes.']
+                    ['icon' => 'fa-solid fa-palette', 'title' => 'White-Label Multi-Tenancy', 'desc' => 'Complete corporate identity matching custom domain origins and theme palettes.'],
                 ],
                 'media_json' => [
                     ['title' => 'TechCrunch Coverage: Enterprise SFU WebRTC Breakthrough', 'category' => 'Press', 'date' => 'Sep 2026', 'link' => '#', 'image' => 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&q=80'],
                     ['title' => 'Global WebRTC Security & Access Control Whitepaper', 'category' => 'Whitepaper', 'date' => 'Aug 2026', 'link' => '#', 'image' => 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500&q=80'],
-                    ['title' => 'MeetingPulse Announces Multi-Region Infrastructure Expansion', 'category' => 'News', 'date' => 'Jul 2026', 'link' => '#', 'image' => 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&q=80']
+                    ['title' => 'MeetingPulse Announces Multi-Region Infrastructure Expansion', 'category' => 'News', 'date' => 'Jul 2026', 'link' => '#', 'image' => 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&q=80'],
                 ],
                 'contact_address' => 'Enterprise World Tower, 8th Floor, Tech Hub Center',
                 'contact_phone' => '+1 (800) 555-MEET / +91 98765 43210',
@@ -73,7 +73,7 @@ class DatabaseSeeder extends Seeder
                     'twitter' => 'https://twitter.com',
                     'linkedin' => 'https://linkedin.com',
                     'youtube' => 'https://youtube.com',
-                    'facebook' => 'https://facebook.com'
+                    'facebook' => 'https://facebook.com',
                 ],
             ]
         );

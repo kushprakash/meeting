@@ -19,7 +19,7 @@ class SuperAdminController extends Controller
     public function reports(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (!$user->isSuperAdmin()) {
+        if (! $user->isSuperAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Super Admin access required.'], 403);
         }
 
@@ -38,8 +38,8 @@ class SuperAdminController extends Controller
                     'total_employees' => $totalEmployees,
                     'total_meetings' => $totalMeetings,
                     'active_live_rooms' => $activeLiveRooms,
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 
@@ -49,7 +49,7 @@ class SuperAdminController extends Controller
     public function listAdmins(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (!$user->isSuperAdmin()) {
+        if (! $user->isSuperAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Super Admin access required.'], 403);
         }
 
@@ -63,7 +63,7 @@ class SuperAdminController extends Controller
             'status' => 'success',
             'data' => [
                 'admins' => $admins,
-            ]
+            ],
         ]);
     }
 
@@ -73,7 +73,7 @@ class SuperAdminController extends Controller
     public function createAdmin(Request $request): JsonResponse
     {
         $superAdmin = $request->user();
-        if (!$superAdmin->isSuperAdmin()) {
+        if (! $superAdmin->isSuperAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Super Admin access required.'], 403);
         }
 
@@ -107,7 +107,7 @@ class SuperAdminController extends Controller
             'message' => 'System Admin created successfully with auto-initialized settings.',
             'data' => [
                 'admin' => $admin->load('setting'),
-            ]
+            ],
         ], 201);
     }
 
@@ -117,7 +117,7 @@ class SuperAdminController extends Controller
     public function updatePermissions(Request $request, int $id): JsonResponse
     {
         $superAdmin = $request->user();
-        if (!$superAdmin->isSuperAdmin()) {
+        if (! $superAdmin->isSuperAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
         }
 
@@ -137,7 +137,7 @@ class SuperAdminController extends Controller
             'message' => 'Admin permissions updated successfully.',
             'data' => [
                 'admin' => $admin->fresh(),
-            ]
+            ],
         ]);
     }
 }

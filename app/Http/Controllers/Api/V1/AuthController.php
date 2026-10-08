@@ -39,7 +39,7 @@ class AuthController extends Controller
                 }
             );
         } catch (\Exception $e) {
-            Log::error("Failed to send OTP email to {$user->email}: " . $e->getMessage());
+            Log::error("Failed to send OTP email to {$user->email}: ".$e->getMessage());
         }
     }
 
@@ -69,7 +69,7 @@ class AuthController extends Controller
             'email_verified_at' => now(),
         ];
 
-        if (!empty($validated['phone'])) {
+        if (! empty($validated['phone'])) {
             $userData['phone'] = trim($validated['phone']);
         }
 
@@ -82,7 +82,7 @@ class AuthController extends Controller
             'data' => [
                 'user' => $user->fresh(),
                 'token' => $token,
-            ]
+            ],
         ], 201);
     }
 
@@ -98,10 +98,10 @@ class AuthController extends Controller
 
         $user = User::where('email', strtolower(trim($validated['email'])))->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'User account not found.'
+                'message' => 'User account not found.',
             ], 404);
         }
 
@@ -120,7 +120,7 @@ class AuthController extends Controller
             'data' => [
                 'user' => $user->fresh(),
                 'token' => $token,
-            ]
+            ],
         ]);
     }
 
@@ -147,13 +147,13 @@ class AuthController extends Controller
 
         $user = User::where('email', strtolower(trim($validated['email'])))->first();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Invalid email or password credentials.'],
             ]);
         }
 
-        if (!$user->email_verified_at) {
+        if (! $user->email_verified_at) {
             $user->update([
                 'email_verified_at' => now(),
                 'is_verified' => 1,
@@ -168,7 +168,7 @@ class AuthController extends Controller
             'data' => [
                 'user' => $user->fresh(),
                 'token' => $token,
-            ]
+            ],
         ]);
     }
 
@@ -181,7 +181,7 @@ class AuthController extends Controller
             'status' => 'success',
             'data' => [
                 'user' => $request->user(),
-            ]
+            ],
         ]);
     }
 
@@ -194,7 +194,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Logged out successfully'
+            'message' => 'Logged out successfully',
         ]);
     }
 
@@ -212,10 +212,10 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Account type updated to ' . ucfirst($validated['account_type']),
+            'message' => 'Account type updated to '.ucfirst($validated['account_type']),
             'data' => [
                 'user' => $user->fresh(),
-            ]
+            ],
         ]);
     }
 }

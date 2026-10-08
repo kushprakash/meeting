@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\AppNotification;
 use App\Models\Meeting;
 use App\Models\NewsBanner;
+use App\Models\Passbook;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -53,9 +55,9 @@ class BannerNotificationController extends Controller
 
             $alreadyPaid = false;
             if ($user) {
-                $hasPaidPassbook = \App\Models\Passbook::where('user_id', $user->id)
+                $hasPaidPassbook = Passbook::where('user_id', $user->id)
                     ->where('type', 'DR')
-                    ->where('details', 'LIKE', '%Meeting Entry Fee:%' . $m->title . '%')
+                    ->where('details', 'LIKE', '%Meeting Entry Fee:%'.$m->title.'%')
                     ->exists();
 
                 $alreadyPaid = $hasPaidPassbook || $m->participants
@@ -67,10 +69,10 @@ class BannerNotificationController extends Controller
             $slides[] = [
                 'type' => 'meeting',
                 'title' => $m->title,
-                'description' => $m->description ?? 'Audio Meeting by ' . ($m->host?->name ?? 'Host'),
+                'description' => $m->description ?? 'Audio Meeting by '.($m->host?->name ?? 'Host'),
                 'image_url' => null,
                 'meeting_uuid' => $m->uuid,
-                'price' => (float)$m->price,
+                'price' => (float) $m->price,
                 'host_name' => $m->host?->name ?? 'Host',
                 'host_id' => $m->host_id,
                 'status' => $isMeetingStarted ? 'active' : $m->status,
@@ -96,7 +98,7 @@ class BannerNotificationController extends Controller
             'status' => 'success',
             'data' => [
                 'banners' => $slides,
-            ]
+            ],
         ]);
     }
 
@@ -106,32 +108,32 @@ class BannerNotificationController extends Controller
     public function getNotifications(Request $request): JsonResponse
     {
         $user = $request->user();
-        $now = \Carbon\Carbon::now('Asia/Kolkata');
+        $now = Carbon::now('Asia/Kolkata');
 
         $rawNotifications = AppNotification::where(function ($q) use ($user) {
             $q->whereNull('user_id')
-              ->orWhere('user_id', $user->id);
+                ->orWhere('user_id', $user->id);
         })
-        ->latest()
-        ->take(40)
-        ->get();
+            ->latest()
+            ->take(40)
+            ->get();
 
         $notifications = [];
         foreach ($rawNotifications as $n) {
-            if (!empty($n->meeting_uuid)) {
+            if (! empty($n->meeting_uuid)) {
                 $meeting = Meeting::where('uuid', $n->meeting_uuid)->first();
                 // Exclude notification if meeting is missing, ended, or expired
-                if (!$meeting || $meeting->status === 'ended') {
+                if (! $meeting || $meeting->status === 'ended') {
                     continue;
                 }
                 if ($meeting->ends_at) {
-                    $endsAt = \Carbon\Carbon::parse($meeting->ends_at)->setTimezone('Asia/Kolkata');
+                    $endsAt = Carbon::parse($meeting->ends_at)->setTimezone('Asia/Kolkata');
                     if ($now->greaterThan($endsAt)) {
                         continue;
                     }
                 }
                 if ($meeting->starts_at) {
-                    $startsAt = \Carbon\Carbon::parse($meeting->starts_at)->setTimezone('Asia/Kolkata');
+                    $startsAt = Carbon::parse($meeting->starts_at)->setTimezone('Asia/Kolkata');
                     if ($now->diffInHours($startsAt, false) < -12) {
                         continue;
                     }
@@ -145,7 +147,7 @@ class BannerNotificationController extends Controller
             'data' => [
                 'unread_count' => count($notifications),
                 'notifications' => array_values($notifications),
-            ]
+            ],
         ]);
     }
 
@@ -166,7 +168,7 @@ class BannerNotificationController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Notification marked as read'
+            'message' => 'Notification marked as read',
         ]);
     }
 }

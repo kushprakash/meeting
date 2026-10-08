@@ -16,28 +16,29 @@ class SocialAuthController extends Controller
     public function redirectToProvider(string $provider)
     {
         $driver = $this->getDriverName($provider);
-        if (!$driver) {
+        if (! $driver) {
             return response()->json(['status' => 'error', 'message' => 'Invalid social provider. Only google and meta are supported.'], 400);
         }
 
         $clientId = config("services.{$driver}.client_id");
         if (empty($clientId)) {
             // Local Development Fallback if OAuth credentials are not set in .env yet
-            $name = ucfirst($provider) . ' User';
-            $email = strtolower($provider) . '_user@example.com';
+            $name = ucfirst($provider).' User';
+            $email = strtolower($provider).'_user@example.com';
 
             $user = User::updateOrCreate(
                 ['email' => $email],
                 [
                     'name' => $name,
                     'provider' => $provider,
-                    'provider_id' => $provider . '_dev_' . rand(100, 999),
+                    'provider_id' => $provider.'_dev_'.rand(100, 999),
                     'password' => null,
                 ]
             );
 
             $token = $user->createToken('social_token')->plainTextToken;
-            return redirect('/?social_token=' . urlencode($token) . '&user_name=' . urlencode($user->name));
+
+            return redirect('/?social_token='.urlencode($token).'&user_name='.urlencode($user->name));
         }
 
         return Socialite::driver($driver)->redirect();
@@ -49,7 +50,7 @@ class SocialAuthController extends Controller
     public function handleProviderCallback(Request $request, string $provider)
     {
         $driver = $this->getDriverName($provider);
-        if (!$driver) {
+        if (! $driver) {
             return redirect('/?error=invalid_provider');
         }
 
@@ -60,9 +61,9 @@ class SocialAuthController extends Controller
             $token = $user->createToken('social_auth_token')->plainTextToken;
 
             // Redirect back to frontend landing page with token
-            return redirect('/?social_token=' . urlencode($token) . '&user_name=' . urlencode($user->name));
+            return redirect('/?social_token='.urlencode($token).'&user_name='.urlencode($user->name));
         } catch (\Exception $e) {
-            return redirect('/?error=' . urlencode('Social auth failed: ' . $e->getMessage()));
+            return redirect('/?error='.urlencode('Social auth failed: '.$e->getMessage()));
         }
     }
 
@@ -81,12 +82,12 @@ class SocialAuthController extends Controller
 
         $user = User::where('email', strtolower(trim($validated['email'])))->first();
 
-        if (!$user) {
+        if (! $user) {
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => strtolower(trim($validated['email'])),
                 'provider' => $validated['provider'],
-                'provider_id' => $validated['provider_id'] ?? ('social_' . uniqid()),
+                'provider_id' => $validated['provider_id'] ?? ('social_'.uniqid()),
                 'avatar' => $validated['avatar'] ?? null,
                 'password' => null,
             ]);
@@ -102,11 +103,11 @@ class SocialAuthController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Logged in successfully with ' . ucfirst($validated['provider']),
+            'message' => 'Logged in successfully with '.ucfirst($validated['provider']),
             'data' => [
                 'user' => $user,
                 'token' => $token,
-            ]
+            ],
         ]);
     }
 
@@ -126,7 +127,7 @@ class SocialAuthController extends Controller
     {
         $user = User::where('email', strtolower($socialUser->getEmail()))->first();
 
-        if (!$user) {
+        if (! $user) {
             return User::create([
                 'name' => $socialUser->getName() ?? $socialUser->getNickname() ?? 'Social User',
                 'email' => strtolower($socialUser->getEmail()),

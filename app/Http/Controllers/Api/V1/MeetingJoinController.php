@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\JoinRequested;
 use App\Http\Controllers\Controller;
+use App\Models\AppNotification;
 use App\Models\Meeting;
 use App\Models\MeetingParticipant;
+use App\Models\Passbook;
 use App\Services\LiveKitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,21 +29,21 @@ class MeetingJoinController extends Controller
     {
         // Check 4: User authenticated?
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'status' => 'error',
                 'code' => 'UNAUTHENTICATED',
-                'message' => 'User authentication is required to join meetings.'
+                'message' => 'User authentication is required to join meetings.',
             ], 401);
         }
 
         // Check 1: Meeting exists?
         $meeting = Meeting::where('uuid', $uuid)->first();
-        if (!$meeting) {
+        if (! $meeting) {
             return response()->json([
                 'status' => 'error',
                 'code' => 'MEETING_NOT_FOUND',
-                'message' => 'Meeting does not exist.'
+                'message' => 'Meeting does not exist.',
             ], 404);
         }
 
@@ -65,16 +68,17 @@ class MeetingJoinController extends Controller
             );
 
             // Notify all users that host has connected and meeting has started
-            \App\Models\AppNotification::create([
+            AppNotification::create([
                 'user_id' => null, // Global notification
-                'title' => 'Meeting Started: ' . $meeting->title,
-                'message' => 'Host ' . $user->name . ' has connected. Join now!',
+                'title' => 'Meeting Started: '.$meeting->title,
+                'message' => 'Host '.$user->name.' has connected. Join now!',
                 'type' => 'meeting_started',
                 'meeting_uuid' => $meeting->uuid,
             ]);
 
             // Host gets direct token
             $token = $this->liveKitService->generateToken($meeting, $user, 'host');
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Welcome Host! Access granted.',
@@ -84,7 +88,7 @@ class MeetingJoinController extends Controller
                     'token' => $token,
                     'livekit_host' => $this->liveKitService->getHostUrl(),
                     'room' => $meeting->uuid,
-                ]
+                ],
             ]);
         }
 
@@ -92,16 +96,16 @@ class MeetingJoinController extends Controller
         $participant = MeetingParticipant::where('meeting_id', $meeting->id)
             ->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
-                  ->orWhere('email', strtolower($user->email));
+                    ->orWhere('email', strtolower($user->email));
             })->first();
 
         // Check Meeting Price & Debit Wallet for Participant
-        $meetingPrice = (float)($meeting->price ?? 0.0);
+        $meetingPrice = (float) ($meeting->price ?? 0.0);
 
         // Check if user has already paid for this meeting via Passbook or Participant record
-        $hasPaidPassbook = \App\Models\Passbook::where('user_id', $user->id)
+        $hasPaidPassbook = Passbook::where('user_id', $user->id)
             ->where('type', 'DR')
-            ->where('details', 'LIKE', '%Meeting Entry Fee:%' . $meeting->title . '%')
+            ->where('details', 'LIKE', '%Meeting Entry Fee:%'.$meeting->title.'%')
             ->exists();
 
         $alreadyPaid = $hasPaidPassbook || ($participant && (
@@ -109,29 +113,29 @@ class MeetingJoinController extends Controller
             in_array($participant->status, ['joined', 'approved', 'left'])
         ));
 
-        if ($meetingPrice > 0 && !$alreadyPaid) {
+        if ($meetingPrice > 0 && ! $alreadyPaid) {
             // Get user current balance from last passbook row
-            $lastPassbook = \App\Models\Passbook::where('user_id', $user->id)->latest('id')->first();
-            $preBalance = $lastPassbook ? (float)$lastPassbook->balance : 0.00;
+            $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
+            $preBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
             if ($preBalance < $meetingPrice) {
                 return response()->json([
                     'status' => 'error',
                     'code' => 'INSUFFICIENT_FUNDS',
-                    'message' => 'Insufficient wallet balance (₹' . number_format($preBalance, 2) . '). Meeting fee is ₹' . number_format($meetingPrice, 2) . '. Please add money to your wallet to join.',
+                    'message' => 'Insufficient wallet balance (₹'.number_format($preBalance, 2).'). Meeting fee is ₹'.number_format($meetingPrice, 2).'. Please add money to your wallet to join.',
                     'data' => [
                         'required_amount' => $meetingPrice,
                         'current_balance' => $preBalance,
-                    ]
+                    ],
                 ], 400);
             }
 
             $newBalance = $preBalance - $meetingPrice;
 
             // Create DR Passbook Record
-            \App\Models\Passbook::create([
+            Passbook::create([
                 'user_id' => $user->id,
-                'details' => 'Meeting Entry Fee: ' . $meeting->title,
+                'details' => 'Meeting Entry Fee: '.$meeting->title,
                 'type' => 'DR',
                 'pre_balance' => $preBalance,
                 'amount' => $meetingPrice,
@@ -148,6 +152,7 @@ class MeetingJoinController extends Controller
             ]);
 
             $token = $this->liveKitService->generateToken($meeting, $user, $participant->role);
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Pre-invited guest verified! Direct access granted.',
@@ -157,17 +162,17 @@ class MeetingJoinController extends Controller
                     'token' => $token,
                     'livekit_host' => $this->liveKitService->getHostUrl(),
                     'room' => $meeting->uuid,
-                ]
+                ],
             ]);
         }
 
         // Check 5 & 6: Private Meeting & Email Invite check
         if ($meeting->isPrivate()) {
-            if (!$participant || !in_array($participant->status, ['approved', 'joined'])) {
+            if (! $participant || ! in_array($participant->status, ['approved', 'joined'])) {
                 return response()->json([
                     'status' => 'error',
                     'code' => 'ACCESS_DENIED',
-                    'message' => 'Access Denied: You are not invited to this private meeting.'
+                    'message' => 'Access Denied: You are not invited to this private meeting.',
                 ], 403);
             }
         }
@@ -181,18 +186,18 @@ class MeetingJoinController extends Controller
                 in_array($participant->status, ['approved', 'joined', 'left'])
             );
 
-            if (!$isApprovedPreviously) {
+            if (! $isApprovedPreviously) {
                 // If host already rejected this participant, return 403 JOIN_REJECTED!
                 if ($participant && $participant->status === 'rejected') {
                     return response()->json([
                         'status' => 'error',
                         'code' => 'JOIN_REJECTED',
-                        'message' => 'Host rejected your request to join this meeting.'
+                        'message' => 'Host rejected your request to join this meeting.',
                     ], 403);
                 }
 
                 // If participant doesn't exist, create a pending join request
-                if (!$participant) {
+                if (! $participant) {
                     $participant = MeetingParticipant::create([
                         'meeting_id' => $meeting->id,
                         'user_id' => $user->id,
@@ -200,7 +205,7 @@ class MeetingJoinController extends Controller
                         'role' => 'participant',
                         'status' => 'pending',
                     ]);
-                } else if ($participant->status !== 'pending') {
+                } elseif ($participant->status !== 'pending') {
                     $participant->update([
                         'user_id' => $user->id,
                         'status' => 'pending',
@@ -208,7 +213,7 @@ class MeetingJoinController extends Controller
                 }
 
                 // Dispatch realtime event to host
-                \App\Events\JoinRequested::dispatch($participant);
+                JoinRequested::dispatch($participant);
 
                 return response()->json([
                     'status' => 'pending',
@@ -217,7 +222,7 @@ class MeetingJoinController extends Controller
                     'data' => [
                         'participant_id' => $participant->id,
                         'status' => 'pending',
-                    ]
+                    ],
                 ], 202); // 202 Accepted (Waiting)
             }
         }
@@ -232,14 +237,14 @@ class MeetingJoinController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'code' => 'MEETING_FULL',
-                    'message' => 'Meeting capacity has been reached.'
+                    'message' => 'Meeting capacity has been reached.',
                 ], 400);
             }
         }
 
         // Check 12: LiveKit Token Generation Valid
         // Update participant status to joined/approved if not already
-        if (!$participant) {
+        if (! $participant) {
             $participant = MeetingParticipant::create([
                 'meeting_id' => $meeting->id,
                 'user_id' => $user->id,
@@ -267,7 +272,7 @@ class MeetingJoinController extends Controller
                 'token' => $token,
                 'livekit_host' => $this->liveKitService->getHostUrl(),
                 'room' => $meeting->uuid,
-            ]
+            ],
         ]);
     }
 
@@ -286,7 +291,7 @@ class MeetingJoinController extends Controller
             if ($user) {
                 $query->where(function ($q) use ($user) {
                     $q->where('user_id', $user->id)
-                      ->orWhere('email', strtolower($user->email));
+                        ->orWhere('email', strtolower($user->email));
                 });
             } elseif ($emailInput) {
                 $query->where('email', strtolower(trim($emailInput)));
@@ -294,7 +299,7 @@ class MeetingJoinController extends Controller
 
             $participant = $query->first();
 
-            if ($participant && !in_array($participant->status, ['blocked', 'removed'])) {
+            if ($participant && ! in_array($participant->status, ['blocked', 'removed'])) {
                 $participant->update([
                     'status' => 'left',
                     'left_at' => now(),
@@ -304,7 +309,7 @@ class MeetingJoinController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Left meeting room successfully'
+            'message' => 'Left meeting room successfully',
         ]);
     }
 }

@@ -16,7 +16,7 @@ class CorporateEmployeeController extends Controller
     public function listEmployees(Request $request): JsonResponse
     {
         $admin = $request->user();
-        if (!$admin->isCorporateEmployee() && !$admin->isAdmin()) {
+        if (! $admin->isCorporateEmployee() && ! $admin->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
         }
 
@@ -33,7 +33,7 @@ class CorporateEmployeeController extends Controller
             'status' => 'success',
             'data' => [
                 'employees' => $employees,
-            ]
+            ],
         ]);
     }
 
@@ -43,7 +43,7 @@ class CorporateEmployeeController extends Controller
     public function createEmployee(Request $request): JsonResponse
     {
         $admin = $request->user();
-        if (!$admin->isCorporateEmployee() && !$admin->isAdmin()) {
+        if (! $admin->isCorporateEmployee() && ! $admin->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
         }
 
@@ -75,7 +75,7 @@ class CorporateEmployeeController extends Controller
             'message' => 'Corporate employee created successfully.',
             'data' => [
                 'employee' => $employee->load('corporate'),
-            ]
+            ],
         ], 201);
     }
 
@@ -85,13 +85,13 @@ class CorporateEmployeeController extends Controller
     public function toggleHosting(Request $request, int $id): JsonResponse
     {
         $admin = $request->user();
-        if (!$admin->isCorporateEmployee() && !$admin->isAdmin()) {
+        if (! $admin->isCorporateEmployee() && ! $admin->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
         }
 
         $employee = User::where('role', 'corporate_employee')->findOrFail($id);
         $employee->update([
-            'is_verified' => !$employee->is_verified,
+            'is_verified' => ! $employee->is_verified,
         ]);
 
         return response()->json([
@@ -99,7 +99,7 @@ class CorporateEmployeeController extends Controller
             'message' => 'Employee hosting privilege updated successfully.',
             'data' => [
                 'employee' => $employee->fresh(),
-            ]
+            ],
         ]);
     }
 }

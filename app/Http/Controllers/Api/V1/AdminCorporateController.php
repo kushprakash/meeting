@@ -17,7 +17,7 @@ class AdminCorporateController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Admin access required.'], 403);
         }
 
@@ -27,7 +27,7 @@ class AdminCorporateController extends Controller
             'status' => 'success',
             'data' => [
                 'corporates' => $corporates,
-            ]
+            ],
         ]);
     }
 
@@ -37,7 +37,7 @@ class AdminCorporateController extends Controller
     public function store(Request $request): JsonResponse
     {
         $admin = $request->user();
-        if (!$admin->isAdmin()) {
+        if (! $admin->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized. Admin access required.'], 403);
         }
 
@@ -60,9 +60,9 @@ class AdminCorporateController extends Controller
         ]);
 
         $corporateAdminUser = null;
-        if (!empty($validated['admin_email']) && !empty($validated['admin_password'])) {
+        if (! empty($validated['admin_email']) && ! empty($validated['admin_password'])) {
             $corporateAdminUser = User::create([
-                'name' => $validated['admin_name'] ?? ($validated['name'] . ' Admin'),
+                'name' => $validated['admin_name'] ?? ($validated['name'].' Admin'),
                 'email' => strtolower(trim($validated['admin_email'])),
                 'password' => Hash::make($validated['admin_password']),
                 'role' => 'corporate_employee',
@@ -81,7 +81,7 @@ class AdminCorporateController extends Controller
             'data' => [
                 'corporate' => $corporate->load('employees'),
                 'corporate_admin' => $corporateAdminUser,
-            ]
+            ],
         ], 201);
     }
 
@@ -91,7 +91,7 @@ class AdminCorporateController extends Controller
     public function verify(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
         }
 
@@ -106,7 +106,7 @@ class AdminCorporateController extends Controller
             'message' => 'Corporate verified successfully',
             'data' => [
                 'corporate' => $corporate,
-            ]
+            ],
         ]);
     }
 
@@ -116,7 +116,7 @@ class AdminCorporateController extends Controller
     public function assignEmployee(Request $request): JsonResponse
     {
         $admin = $request->user();
-        if (!$admin->isAdmin()) {
+        if (! $admin->isAdmin()) {
             return response()->json(['status' => 'error', 'message' => 'Unauthorized.'], 403);
         }
 
@@ -139,7 +139,7 @@ class AdminCorporateController extends Controller
             'message' => 'User assigned to verified corporate successfully.',
             'data' => [
                 'user' => $targetUser->fresh(['corporate']),
-            ]
+            ],
         ]);
     }
 }

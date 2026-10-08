@@ -3,7 +3,6 @@
 namespace App\Events;
 
 use App\Models\MeetingParticipant;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -24,7 +23,7 @@ class JoinRequested implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('meeting.host.' . $this->participant->meeting->uuid),
+            new PrivateChannel('meeting.host.'.$this->participant->meeting->uuid),
         ];
     }
 

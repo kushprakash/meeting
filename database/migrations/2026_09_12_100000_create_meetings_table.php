@@ -20,13 +20,13 @@ return new class extends Migration
             $table->boolean('approval_required')->default(true);
             $table->enum('status', ['scheduled', 'active', 'ended'])->default('active');
             $table->integer('max_participants')->nullable();
-            
+
             // Feature permissions
             $table->boolean('allow_audio')->default(true);
             $table->boolean('allow_video')->default(true);
             $table->boolean('allow_screen_share')->default(true);
             $table->boolean('allow_chat')->default(true);
-            
+
             $table->timestamp('starts_at')->nullable();
             $table->timestamp('ends_at')->nullable();
             $table->timestamps();

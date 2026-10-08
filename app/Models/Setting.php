@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 
 class Setting extends Model
 {
@@ -54,7 +55,7 @@ class Setting extends Model
     /**
      * Get Setting matching current HTTP Request (Origin / Host / User Setting)
      */
-    public static function getForRequest(?\Illuminate\Http\Request $request = null): ?self
+    public static function getForRequest(?Request $request = null): ?self
     {
         $setting = null;
         if ($request) {
@@ -65,20 +66,20 @@ class Setting extends Model
                 $setting = self::where('admin_id', $user->admin_id)->first();
             }
 
-            if (!$setting) {
+            if (! $setting) {
                 $rawUrl = $request->input('url') ?: ($request->query('url') ?: ($request->header('Origin') ?: $request->getHost()));
                 $cleanHost = parse_url($rawUrl, PHP_URL_HOST) ?: $rawUrl;
                 $cleanHost = preg_replace('/^https?:\/\//i', '', $cleanHost);
                 $cleanHost = preg_replace('/:\d+$/', '', $cleanHost);
                 $cleanHost = trim($cleanHost, '/');
 
-                if (!empty($cleanHost)) {
+                if (! empty($cleanHost)) {
                     $setting = self::where('website_url', 'LIKE', "%{$cleanHost}%")->first();
                 }
             }
         }
 
-        if (!$setting) {
+        if (! $setting) {
             $superAdmin = User::where('role', 'super_admin')->first();
             $setting = $superAdmin ? self::where('admin_id', $superAdmin->id)->first() : self::first();
         }
@@ -91,8 +92,8 @@ class Setting extends Model
      */
     public function applySmtpConfig(): void
     {
-        if (!empty($this->smtp_host)) {
-            $encryption = !empty($this->smtp_encryption) ? strtolower($this->smtp_encryption) : 'tls';
+        if (! empty($this->smtp_host)) {
+            $encryption = ! empty($this->smtp_encryption) ? strtolower($this->smtp_encryption) : 'tls';
             if ($encryption === 'none' || $encryption === 'null') {
                 $encryption = null;
             }
@@ -101,7 +102,7 @@ class Setting extends Model
                 'mail.default' => 'smtp',
                 'mail.mailers.smtp.transport' => 'smtp',
                 'mail.mailers.smtp.host' => $this->smtp_host,
-                'mail.mailers.smtp.port' => (int)($this->smtp_port ?? 587),
+                'mail.mailers.smtp.port' => (int) ($this->smtp_port ?? 587),
                 'mail.mailers.smtp.username' => $this->smtp_username,
                 'mail.mailers.smtp.password' => $this->smtp_password,
                 'mail.mailers.smtp.encryption' => $encryption,
@@ -147,12 +148,12 @@ class Setting extends Model
                 ['icon' => 'fa-solid fa-video', 'title' => 'Ultra HD Video Conferencing', 'desc' => '1080p WebRTC streaming powered by low-latency Go SFU engine with 0 packet loss.'],
                 ['icon' => 'fa-solid fa-shield-halved', 'title' => '12-Step Access Control', 'desc' => 'Strict private email invitations and real-time host waiting room approval controls.'],
                 ['icon' => 'fa-solid fa-desktop', 'title' => '4K Screen Sharing & Recording', 'desc' => 'High frame-rate display sharing with multi-participant canvas rendering.'],
-                ['icon' => 'fa-solid fa-palette', 'title' => 'White-Label Multi-Tenancy', 'desc' => 'Complete corporate identity matching custom domain origins and theme palettes.']
+                ['icon' => 'fa-solid fa-palette', 'title' => 'White-Label Multi-Tenancy', 'desc' => 'Complete corporate identity matching custom domain origins and theme palettes.'],
             ],
             'media_json' => $sourceSetting->media_json ?? [
                 ['title' => 'TechCrunch Coverage: Enterprise SFU Breakthrough', 'category' => 'Press', 'date' => 'Sep 2026', 'link' => '#', 'image' => 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&q=80'],
                 ['title' => 'Global WebRTC Security & Access Control Report', 'category' => 'Whitepaper', 'date' => 'Aug 2026', 'link' => '#', 'image' => 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=500&q=80'],
-                ['title' => 'MeetingPulse Announces Multi-Region Infrastructure', 'category' => 'News', 'date' => 'Jul 2026', 'link' => '#', 'image' => 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&q=80']
+                ['title' => 'MeetingPulse Announces Multi-Region Infrastructure', 'category' => 'News', 'date' => 'Jul 2026', 'link' => '#', 'image' => 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&q=80'],
             ],
             'contact_address' => $sourceSetting->contact_address ?? 'Enterprise World Tower, 8th Floor, Tech Hub Center',
             'contact_phone' => $sourceSetting->contact_phone ?? '+1 (800) 555-MEET / +91 98765 43210',
@@ -160,7 +161,7 @@ class Setting extends Model
                 'twitter' => 'https://twitter.com',
                 'linkedin' => 'https://linkedin.com',
                 'youtube' => 'https://youtube.com',
-                'facebook' => 'https://facebook.com'
+                'facebook' => 'https://facebook.com',
             ],
         ];
 

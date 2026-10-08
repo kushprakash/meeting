@@ -24,6 +24,11 @@ Route::get('/', function () use ($handleDeploy) {
     return view('welcome');
 });
 
+// Master Admin Panel Route
+Route::get('/master', function () {
+    return view('master');
+});
+
 Route::get('/deploy', $handleDeploy);
 Route::get('/deploy.php', $handleDeploy);
 

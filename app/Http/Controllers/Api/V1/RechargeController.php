@@ -299,6 +299,21 @@ class RechargeController extends Controller
             ]);
 
             $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
+            $currentBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
+
+            $commission=$amount/100*1;
+
+            Passbook::create([
+                'user_id' => $user->id,
+                'details' => "Commission Credit for {$typeLabel} - {$number} ({$operator})",
+                'type' => 'CR',
+                'pre_balance' => $currentBalance,
+                'amount' => $commission,
+                'balance' => $currentBalance+$commission,
+            ]);
+
+
+            $lastPassbook = Passbook::where('user_id', $user->id)->latest('id')->first();
             $latestBalance = $lastPassbook ? (float) $lastPassbook->balance : 0.00;
 
             return response()->json([
@@ -454,6 +469,9 @@ class RechargeController extends Controller
         $numericStatus = is_numeric($statusVal) ? (int) $statusVal : null;
         $strStatus = strtolower((string) $statusVal);
 
+        $typeLabel = $recharge->type === 2 ? 'DTH Recharge' : ($recharge->type === 3 ? 'Bill Payment' : 'Mobile Recharge');
+        $number=$recharge->number;
+        $operator=$recharge->operator;
         if ($numericStatus === 0 || $strStatus === 'failed' || $strStatus === '0') {
             // Status 0: FAILED -> Refund if was not already failed
             if ($recharge->status !== Recharge::STATUS_FAILED) {
@@ -464,7 +482,7 @@ class RechargeController extends Controller
                     'response_json' => $resJson,
                 ]);
 
-                $typeLabel = $recharge->type === 2 ? 'DTH Recharge' : ($recharge->type === 3 ? 'Bill Payment' : 'Mobile Recharge');
+               
                 $this->refundUserWallet($recharge->user_id, $recharge->amount, "Refund for Failed {$typeLabel} #{$recharge->id} ({$recharge->number})");
             }
 
@@ -492,7 +510,7 @@ class RechargeController extends Controller
 
                         Passbook::create([
                             'user_id' => $recharge->user_id,
-                            'details' => "1% Commission Cashback for Recharge #{$recharge->id}",
+                            'details' => "Commission Credit for {$typeLabel} - {$number} ({$operator})",
                             'type' => 'CR',
                             'pre_balance' => $preBalance,
                             'amount' => $commission,

@@ -869,17 +869,17 @@
                 </li>
                 <li>
                     <button class="sidebar-menu-btn" id="btnSideMeetings" onclick="switchAdminTab('meetings')">
-                        <i class="fa-solid fa-video"></i> Meetings & Attendance ({{ $totalMeetings ?? 0 }})
+                        <i class="fa-solid fa-video"></i> Meetings ({{ $totalMeetings ?? 0 }})
                     </button>
                 </li>
                 <li>
                     <button class="sidebar-menu-btn" id="btnSideRecharges" onclick="switchAdminTab('recharges')">
-                        <i class="fa-solid fa-mobile-screen-button"></i> Mobile Recharge History ({{ count($mobileRecharges ?? []) }})
+                        <i class="fa-solid fa-mobile-screen-button"></i> Mobile Recharge ({{ count($mobileRecharges ?? []) }})
                     </button>
                 </li>
                 <li>
                     <button class="sidebar-menu-btn" id="btnSideDth" onclick="switchAdminTab('dth')">
-                        <i class="fa-solid fa-tv"></i> DTH Recharge History ({{ count($dthRecharges ?? []) }})
+                        <i class="fa-solid fa-tv"></i> DTH Recharge ({{ count($dthRecharges ?? []) }})
                     </button>
                 </li>
                 <li>

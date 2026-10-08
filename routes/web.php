@@ -51,12 +51,16 @@ Route::get('/master', function () {
     $totalMeetingEntryFee = (float) Passbook::where('type', 'DR')->where('details', 'like', '%Meeting Entry Fee%')->sum('amount');
 
     // 4. Recharges & Bill Payments Debit Aggregates
-    $debitMobileRecharge = (float) Recharge::where('type', 1)->where('status', 1)->sum('amount');
-    $debitDthRecharge = (float) Recharge::where('type', 2)->where('status', 1)->sum('amount');
-    $debitBillPayment = (float) Recharge::where('type', 3)->where('status', 1)->sum('amount');
+    $debitMobileRecharge = (float) Passbook::where('type', 'DR')->where('details', 'like', '%Debit for Mobile Recharge%')->sum('amount');
+    $debitMobileRechargeRefund = (float) Passbook::where('type', 'CR')->where('details', 'like', '%Refund for Failed Mobile Recharge%')->sum('amount');
+    $debitDthRecharge = (float) Passbook::where('type', 'DR')->where('details', 'like', '%Debit for DTH Recharge%')->sum('amount');
+    $debitDthRechargeRefund = (float) Passbook::where('type', 'CR')->where('details', 'like', '%Refund for Failed DTH Recharge%')->sum('amount');
+    $debitBillPayment = (float) Passbook::where('type', 'DR')->where('details', 'like', '%Debit for Bill Payment%')->sum('amount');
+    $debitBillPaymentRefund = (float) Passbook::where('type', 'CR')->where('details', 'like', '%Refund for Failed Bill Payment%')->sum('amount');
+
 
     // 5. Total Add Fund (Total CR in Passbooks)
-    $totalAddFund = (float) Passbook::where('type', 'CR')->sum('amount');
+    $totalAddFund = (float) Passbook::where('type', 'DR')->where('details', 'like', '%Added Money to Wallet (PG%')->sum('amount');
 
     // 6. Recent Logs
     $recharges = Recharge::with('user')->latest()->take(100)->get();
@@ -68,8 +72,11 @@ Route::get('/master', function () {
         'totalUserBalance',
         'totalMeetingEntryFee',
         'debitMobileRecharge',
+        'debitMobileRechargeRefund',
         'debitDthRecharge',
+        'debitDthRechargeRefund',
         'debitBillPayment',
+        'debitBillPaymentRefund',
         'totalAddFund',
         'meetings',
         'totalMeetings',

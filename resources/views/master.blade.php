@@ -832,30 +832,30 @@
                     <!-- 6. Debit for Mobile Recharge -->
                     <div class="grid-card-clickable" onclick="switchAdminTab('recharges')">
                         <div class="card-header-flex">
-                            <span class="card-lbl">Debit Mobile Recharge</span>
+                            <span class="card-lbl">Mobile Recharge</span>
                             <div class="card-icon-box" style="background: rgba(59, 130, 246, 0.15); color: #3B82F6;"><i class="fa-solid fa-mobile-screen"></i></div>
                         </div>
-                        <div class="card-val-big" style="color: #3B82F6;">₹{{ number_format($debitMobileRecharge ?? 0, 2) }}</div>
+                        <div class="card-val-big" style="color: #3B82F6;">₹{{ number_format($debitMobileRecharge - $debitMobileRechargeRefund ?? 0, 2) }}</div>
                         <div class="card-sub-tag">Mobile Recharge Volume</div>
                     </div>
 
                     <!-- 7. Debit for DTH Recharge -->
                     <div class="grid-card-clickable" onclick="switchAdminTab('recharges')">
                         <div class="card-header-flex">
-                            <span class="card-lbl">Debit DTH Recharge</span>
+                            <span class="card-lbl">DTH Recharge</span>
                             <div class="card-icon-box" style="background: rgba(245, 158, 11, 0.15); color: var(--warning-amber);"><i class="fa-solid fa-tv"></i></div>
                         </div>
-                        <div class="card-val-big" style="color: var(--warning-amber);">₹{{ number_format($debitDthRecharge ?? 0, 2) }}</div>
+                        <div class="card-val-big" style="color: var(--warning-amber);">₹{{ number_format($debitDthRecharge - $debitDthRechargeRefund ?? 0, 2) }}</div>
                         <div class="card-sub-tag">DTH Recharge Volume</div>
                     </div>
 
                     <!-- 8. Debit for Bill Payment -->
                     <div class="grid-card-clickable" onclick="switchAdminTab('recharges')">
                         <div class="card-header-flex">
-                            <span class="card-lbl">Debit Bill Payment</span>
+                            <span class="card-lbl">Bill Payment</span>
                             <div class="card-icon-box" style="background: rgba(124, 58, 237, 0.15); color: var(--accent-purple);"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                         </div>
-                        <div class="card-val-big" style="color: var(--accent-purple);">₹{{ number_format($debitBillPayment ?? 0, 2) }}</div>
+                        <div class="card-val-big" style="color: var(--accent-purple);">₹{{ number_format($debitBillPayment - $debitBillPaymentRefund ?? 0, 2) }}</div>
                         <div class="card-sub-tag">Utility Bill Payments</div>
                     </div>
                 </div>

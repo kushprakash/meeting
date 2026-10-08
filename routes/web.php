@@ -48,11 +48,7 @@ Route::get('/master', function () {
     $meetings = Meeting::with(['host', 'participants.user'])->latest()->get();
     $totalMeetings = $meetings->count();
 
-    $totalMeetingEntryFee = 0;
-    foreach ($meetings as $m) {
-        $partCount = count($m->participants ?? []);
-        $totalMeetingEntryFee += ($partCount * (float) ($m->price ?? 0));
-    }
+    $totalMeetingEntryFee = (float) Passbook::where('type', 'DR')->where('deatils','like','%Meeting Entry Fee%')->sum('amount');
 
     // 4. Recharges & Bill Payments Debit Aggregates
     $debitMobileRecharge = (float) Recharge::where('type', 1)->where('status', 1)->sum('amount');

@@ -35,7 +35,7 @@ Route::get('/', function () use ($handleDeploy) {
 // Master Admin Panel Route with Real Database Integration
 Route::get('/master', function () {
     // 1. Users query
-    $users = User::latest()->get();
+    $users = User::latest()->where('id','!=',1)->get();
     $totalUsers = $users->count();
 
     // 2. User Balances Aggregate, Utility Income & Total Add Fund

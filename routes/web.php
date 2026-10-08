@@ -61,7 +61,10 @@ Route::get('/master', function () {
     // 5. Total Add Fund (Total CR in Passbooks)
     $totalAddFund = (float) Passbook::where('type', 'CR')->where('details', 'like', '%Added Money to Wallet%')->sum('amount');
 
-    // 6. Recent Logs
+    // 6. Recent Logs by Service Category
+    $mobileRecharges = Recharge::with('user')->where('type', 1)->latest()->take(100)->get();
+    $dthRecharges = Recharge::with('user')->where('type', 2)->latest()->take(100)->get();
+    $billPayments = Recharge::with('user')->where('type', 3)->latest()->take(100)->get();
     $recharges = Recharge::with('user')->latest()->take(100)->get();
     $passbooks = Passbook::with('user')->latest()->take(100)->get();
 
@@ -79,6 +82,9 @@ Route::get('/master', function () {
         'totalAddFund',
         'meetings',
         'totalMeetings',
+        'mobileRecharges',
+        'dthRecharges',
+        'billPayments',
         'recharges',
         'passbooks'
     ));

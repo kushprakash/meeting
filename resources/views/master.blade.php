@@ -874,19 +874,20 @@
                 </li>
                 <li>
                     <button class="sidebar-menu-btn" id="btnSideRecharges" onclick="switchAdminTab('recharges')">
-                        <i class="fa-solid fa-receipt"></i> Recharge & Bill History ({{ count($recharges ?? []) }})
+                        <i class="fa-solid fa-mobile-screen-button"></i> Mobile Recharge History ({{ count($mobileRecharges ?? []) }})
                     </button>
                 </li>
                 <li>
-                    <button class="sidebar-menu-btn" id="btnSidePassbook" onclick="switchAdminTab('passbook')">
-                        <i class="fa-solid fa-wallet"></i> Wallet & Passbook ({{ count($passbooks ?? []) }})
+                    <button class="sidebar-menu-btn" id="btnSideDth" onclick="switchAdminTab('dth')">
+                        <i class="fa-solid fa-tv"></i> DTH Recharge History ({{ count($dthRecharges ?? []) }})
                     </button>
                 </li>
                 <li>
-                    <button class="sidebar-menu-btn" id="btnSideReports" onclick="switchAdminTab('reports')">
-                        <i class="fa-solid fa-file-invoice"></i> Reports & Export
+                    <button class="sidebar-menu-btn" id="btnSideBill" onclick="switchAdminTab('bill')">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> Bill Payment History ({{ count($billPayments ?? []) }})
                     </button>
                 </li>
+           
             </ul>
 
             <div class="sidebar-user-card">
@@ -992,7 +993,7 @@
                     </div>
 
                     <!-- 7. Debit for DTH Recharge -->
-                    <div class="grid-card-clickable" onclick="switchAdminTab('recharges')">
+                    <div class="grid-card-clickable" onclick="switchAdminTab('dth')">
                         <div class="card-header-flex">
                             <span class="card-lbl">DTH Recharge</span>
                             <div class="card-icon-box" style="background: rgba(245, 158, 11, 0.15); color: var(--warning-amber);"><i class="fa-solid fa-tv"></i></div>
@@ -1002,7 +1003,7 @@
                     </div>
 
                     <!-- 8. Debit for Bill Payment -->
-                    <div class="grid-card-clickable" onclick="switchAdminTab('recharges')">
+                    <div class="grid-card-clickable" onclick="switchAdminTab('bill')">
                         <div class="card-header-flex">
                             <span class="card-lbl">Bill Payment</span>
                             <div class="card-icon-box" style="background: rgba(124, 58, 237, 0.15); color: var(--accent-purple);"><i class="fa-solid fa-file-invoice-dollar"></i></div>
@@ -1126,10 +1127,10 @@
                 </div>
             </div>
 
-            <!-- TAB PANEL 4: REAL RECHARGE & BILL HISTORY -->
+            <!-- TAB PANEL 4: MOBILE RECHARGE HISTORY -->
             <div class="tab-panel-section" id="tab-recharges">
                 <div class="table-header-flex">
-                    <h3 class="table-title"><i class="fa-solid fa-receipt"></i> Recharge & Bill Payment Logs ({{ count($recharges ?? []) }})</h3>
+                    <h3 class="table-title"><i class="fa-solid fa-mobile-screen-button"></i> Mobile Recharge History ({{ count($mobileRecharges ?? []) }})</h3>
                 </div>
 
                 <div class="data-table-card">
@@ -1138,35 +1139,133 @@
                             <tr>
                                 <th>Order ID</th>
                                 <th>User Email</th>
-                                <th>Service Type</th>
-                                <th>Number / Account ID</th>
+                                <th>Mobile Number</th>
+                                <th>Operator / Circle</th>
                                 <th>Amount</th>
                                 <th>Status</th>
                                 <th>Date & Time</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($recharges ?? [] as $r)
+                            @forelse($mobileRecharges ?? [] as $r)
                                 <tr>
-                                    <td>{{ $r->order_id ?? ('REC-'.$r->id) }}</td>
+                                    <td>{{ $r->order_id ?? ('MOB-'.$r->id) }}</td>
                                     <td>{{ $r->user->email ?? 'N/A' }}</td>
-                                    <td>{{ $r->type == 1 ? 'Mobile Recharge' : ($r->type == 2 ? 'DTH Recharge' : 'Bill Payment') }}</td>
-                                    <td>{{ $r->number }}</td>
+                                    <td style="font-weight: 800; color: var(--text-main);">{{ $r->number }}</td>
+                                    <td>Operator #{{ $r->operator ?? 'N/A' }} {{ $r->circle ? ('(Circle: '.$r->circle.')') : '' }}</td>
                                     <td style="color: var(--accent-cyan); font-weight: 800;">₹{{ number_format($r->amount, 2) }}</td>
                                     <td>
                                         @if($r->status == 1)
-                                            <span class="status-pill status-success">Success</span>
+                                            <span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Success</span>
                                         @elseif($r->status == 2)
-                                            <span class="status-pill status-pending">Pending</span>
+                                            <span class="status-pill status-pending"><i class="fa-solid fa-clock"></i> Pending</span>
                                         @else
-                                            <span class="status-pill status-failed">Failed</span>
+                                            <span class="status-pill status-failed"><i class="fa-solid fa-circle-xmark"></i> {{ $r->status_text ?? 'Failed' }}</span>
                                         @endif
                                     </td>
                                     <td>{{ $r->created_at ? $r->created_at->format('d M Y, h:i A') : 'N/A' }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">No recharge transactions in database.</td>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">No Mobile Recharge transactions found.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB PANEL 5: DTH RECHARGE HISTORY -->
+            <div class="tab-panel-section" id="tab-dth">
+                <div class="table-header-flex">
+                    <h3 class="table-title"><i class="fa-solid fa-tv"></i> DTH Recharge History ({{ count($dthRecharges ?? []) }})</h3>
+                </div>
+
+                <div class="data-table-card">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>User Email</th>
+                                <th>DTH Subscriber Number</th>
+                                <th>Operator</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date & Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($dthRecharges ?? [] as $r)
+                                <tr>
+                                    <td>{{ $r->order_id ?? ('DTH-'.$r->id) }}</td>
+                                    <td>{{ $r->user->email ?? 'N/A' }}</td>
+                                    <td style="font-weight: 800; color: var(--text-main);">{{ $r->number }}</td>
+                                    <td>DTH Operator #{{ $r->operator ?? 'N/A' }}</td>
+                                    <td style="color: var(--warning-amber); font-weight: 800;">₹{{ number_format($r->amount, 2) }}</td>
+                                    <td>
+                                        @if($r->status == 1)
+                                            <span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Success</span>
+                                        @elseif($r->status == 2)
+                                            <span class="status-pill status-pending"><i class="fa-solid fa-clock"></i> Pending</span>
+                                        @else
+                                            <span class="status-pill status-failed"><i class="fa-solid fa-circle-xmark"></i> {{ $r->status_text ?? 'Failed' }}</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $r->created_at ? $r->created_at->format('d M Y, h:i A') : 'N/A' }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">No DTH Recharge transactions found.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB PANEL 6: BILL PAYMENT HISTORY -->
+            <div class="tab-panel-section" id="tab-bill">
+                <div class="table-header-flex">
+                    <h3 class="table-title"><i class="fa-solid fa-file-invoice-dollar"></i> Bill Payment History ({{ count($billPayments ?? []) }})</h3>
+                </div>
+
+                <div class="data-table-card">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>User Email</th>
+                                <th>Bill / Account Number</th>
+                                <th>Customer Name</th>
+                                <th>Due Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date & Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($billPayments ?? [] as $r)
+                                <tr>
+                                    <td>{{ $r->order_id ?? ('BILL-'.$r->id) }}</td>
+                                    <td>{{ $r->user->email ?? 'N/A' }}</td>
+                                    <td style="font-weight: 800; color: var(--text-main);">{{ $r->bill_number ?? $r->number }}</td>
+                                    <td>{{ $r->customer_name ?? 'N/A' }}</td>
+                                    <td>{{ $r->due_date ?? 'N/A' }}</td>
+                                    <td style="color: var(--accent-purple); font-weight: 800;">₹{{ number_format($r->amount, 2) }}</td>
+                                    <td>
+                                        @if($r->status == 1)
+                                            <span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Paid</span>
+                                        @elseif($r->status == 2)
+                                            <span class="status-pill status-pending"><i class="fa-solid fa-clock"></i> Pending</span>
+                                        @else
+                                            <span class="status-pill status-failed"><i class="fa-solid fa-circle-xmark"></i> {{ $r->status_text ?? 'Failed' }}</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $r->created_at ? $r->created_at->format('d M Y, h:i A') : 'N/A' }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted);">No Bill Payment transactions found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -1580,7 +1679,9 @@
                 'dashboard': 'Master Dashboard Overview',
                 'users': 'User Manager & Accounts',
                 'meetings': 'Meetings Manager & Joined User Reports',
-                'recharges': 'Recharge & Bill Payment Logs',
+                'recharges': 'Mobile Recharge History',
+                'dth': 'DTH Recharge History',
+                'bill': 'Bill Payment History',
                 'passbook': 'Wallet & Passbook Ledger',
                 'reports': 'Custom Reports & CSV Export'
             };

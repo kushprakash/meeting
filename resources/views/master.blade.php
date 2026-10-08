@@ -662,6 +662,152 @@
         .tab-panel-section.active {
             display: block;
         }
+
+        /* MOBILE & TABLET RESPONSIVENESS */
+        .mobile-top-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1rem;
+            background: var(--bg-sidebar);
+            border-bottom: 1px solid var(--border-light);
+            margin: -1.25rem -1rem 1.25rem -1rem;
+        }
+
+        .mobile-toggle-btn {
+            background: rgba(0, 242, 254, 0.1);
+            border: 1px solid var(--border-glow);
+            color: var(--accent-cyan);
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .mobile-toggle-btn:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-dark);
+        }
+
+        .mobile-brand-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 800;
+            font-size: 1rem;
+            color: var(--text-main);
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            z-index: 1040;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+        @media (max-width: 1024px) {
+            .admin-dashboard-container.active {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                z-index: 1050;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                box-shadow: 5px 0 25px rgba(0, 0, 0, 0.6);
+                width: 285px;
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                max-height: none;
+                padding: 1.25rem 1rem;
+            }
+
+            .mobile-top-bar {
+                display: flex;
+            }
+
+            .interactive-grid-cards {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+
+            .charts-row-2 {
+                grid-template-columns: 1fr;
+                gap: 1.25rem;
+            }
+
+            .top-navbar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .top-navbar > div:last-child {
+                width: 100%;
+                display: flex;
+                gap: 0.75rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .interactive-grid-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .page-title {
+                font-size: 1.4rem;
+            }
+
+            .login-card {
+                padding: 2rem 1.25rem;
+                border-radius: 18px;
+            }
+
+            .btn-action-pill {
+                padding: 0.55rem 0.9rem;
+                font-size: 0.82rem;
+                flex: 1;
+                justify-content: center;
+            }
+
+            .modal-box {
+                padding: 1.5rem 1rem;
+                border-radius: 18px;
+            }
+
+            .table-header-flex {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .table-header-flex > div {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -670,7 +816,7 @@
     <div class="bg-cyber-grid"></div>
 
     <!-- 1. LOGIN SCREEN VIEW -->
-    <div class="login-wrapper" id="masterLoginWrapper">
+    <div class="login-wrapper" id="masterLoginWrapper" style="{{ session('master_logged_in', false) ? 'display: none;' : 'display: flex;' }}">
         <div class="login-card">
             <img src="/best_recharge.PNG" alt="Best Recharge Master Admin" class="brand-logo-img">
             <h1 class="login-title">Master Admin Portal</h1>
@@ -701,7 +847,8 @@
     </div>
 
     <!-- 2. MASTER DASHBOARD WORKSPACE -->
-    <div class="admin-dashboard-container" id="masterDashboardWrapper">
+    <div class="admin-dashboard-container {{ session('master_logged_in', false) ? 'active' : '' }}" id="masterDashboardWrapper">
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
         
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
@@ -743,21 +890,26 @@
             </ul>
 
             <div class="sidebar-user-card">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="user-avatar-badge">M</div>
-                    <div>
-                        <div style="font-weight: 800; font-size: 0.88rem; color: var(--text-main);">Master Admin</div>
-                        <div style="font-size: 0.75rem; color: var(--accent-cyan);">meeting_db MySQL</div>
-                    </div>
-                </div>
+              
                 <button onclick="handleAdminLogout()" style="background: transparent; border: none; color: var(--danger-red); cursor: pointer; font-size: 1.1rem;" title="Logout">
-                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
                 </button>
             </div>
         </aside>
 
         <!-- Main Workspace -->
         <main class="main-content">
+            <!-- Mobile Header Bar -->
+            <div class="mobile-top-bar">
+                <button class="mobile-toggle-btn" onclick="toggleMobileSidebar()" title="Toggle Menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="mobile-brand-title">
+                    <img src="/best_recharge.PNG" alt="Best Recharge" style="height: 28px;">
+                    <span>Master Admin</span>
+                </div>
+            </div>
+
             <div class="top-navbar">
                 <div>
                     <h2 class="page-title" id="adminTabTitle">Master Dashboard Overview</h2>
@@ -1339,30 +1491,83 @@
 
         function handleMasterLogin(e) {
             if (e) e.preventDefault();
-            localStorage.setItem('master_logged_in', 'true');
-            document.getElementById('masterLoginWrapper').style.display = 'none';
-            document.getElementById('masterDashboardWrapper').classList.add('active');
-            initDashboardCharts();
-            showToast('Authenticated! Loaded real MySQL database records.', 'success');
+            
+            fetch('/master/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(res => res.json())
+            .then(resData => {
+                localStorage.setItem('master_logged_in', 'true');
+                document.getElementById('masterLoginWrapper').style.display = 'none';
+                document.getElementById('masterDashboardWrapper').classList.add('active');
+                initDashboardCharts();
+                showToast('Authenticated! Session active.', 'success');
+            })
+            .catch(() => {
+                localStorage.setItem('master_logged_in', 'true');
+                document.getElementById('masterLoginWrapper').style.display = 'none';
+                document.getElementById('masterDashboardWrapper').classList.add('active');
+                initDashboardCharts();
+            });
         }
 
         function handleAdminLogout() {
-            localStorage.removeItem('master_logged_in');
-            document.getElementById('masterDashboardWrapper').classList.remove('active');
-            document.getElementById('masterLoginWrapper').style.display = 'flex';
-            showToast('Logged out of Master Admin Portal', 'info');
+            fetch('/master/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .finally(() => {
+                localStorage.removeItem('master_logged_in');
+                document.getElementById('masterDashboardWrapper').classList.remove('active');
+                document.getElementById('masterLoginWrapper').style.display = 'flex';
+                showToast('Logged out of Master Admin Portal', 'info');
+            });
         }
 
         // Auto Restore Session on Refresh / Page Load
         document.addEventListener('DOMContentLoaded', function() {
-            if (localStorage.getItem('master_logged_in') === 'true') {
-                document.getElementById('masterLoginWrapper').style.display = 'none';
+            const isServerLogged = {{ session('master_logged_in', false) ? 'true' : 'false' }};
+            const isLocalLogged = localStorage.getItem('master_logged_in') === 'true';
+
+            if (isServerLogged || isLocalLogged) {
+                if (isLocalLogged && !isServerLogged) {
+                    fetch('/master/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    });
+                }
+                 document.getElementById('masterLoginWrapper').style.display = 'none';
                 document.getElementById('masterDashboardWrapper').classList.add('active');
                 initDashboardCharts();
             }
         });
 
+        function toggleMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.toggle('mobile-open');
+            if (overlay) overlay.classList.toggle('active');
+        }
+
+        function closeMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
+        }
+
         function switchAdminTab(tabName) {
+            closeMobileSidebar();
             document.querySelectorAll('.sidebar-menu-btn').forEach(b => b.classList.remove('active'));
             const sideBtn = document.getElementById(`btnSide${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
             if (sideBtn) sideBtn.classList.add('active');

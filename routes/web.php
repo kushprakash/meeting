@@ -58,7 +58,6 @@ Route::get('/master', function () {
     $debitBillPayment = (float) Passbook::where('type', 'DR')->where('details', 'like', '%Debit for Bill Payment%')->sum('amount');
     $debitBillPaymentRefund = (float) Passbook::where('type', 'CR')->where('details', 'like', '%Refund for Failed Bill Payment%')->sum('amount');
 
-
     // 5. Total Add Fund (Total CR in Passbooks)
     $totalAddFund = (float) Passbook::where('type', 'CR')->where('details', 'like', '%Added Money to Wallet%')->sum('amount');
 
@@ -83,6 +82,26 @@ Route::get('/master', function () {
         'recharges',
         'passbooks'
     ));
+});
+
+// Master Session Login Endpoint
+Route::post('/master/login', function (Request $request) {
+    session(['master_logged_in' => true]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Authenticated successfully! Master admin session started.',
+    ]);
+});
+
+// Master Session Logout Endpoint
+Route::post('/master/logout', function (Request $request) {
+    session()->forget('master_logged_in');
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Logged out successfully!',
+    ]);
 });
 
 // Master AJAX Endpoint: Fetch Meeting Participants

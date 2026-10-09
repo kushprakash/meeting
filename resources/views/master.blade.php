@@ -887,6 +887,11 @@
                         <i class="fa-solid fa-file-invoice-dollar"></i> Bill Payment History ({{ count($billPayments ?? []) }})
                     </button>
                 </li>
+                <li>
+                    <button class="sidebar-menu-btn" id="btnSideBanners" onclick="switchAdminTab('banners')">
+                        <i class="fa-solid fa-images"></i> Banners & Slider ({{ count($newsBanners ?? []) }})
+                    </button>
+                </li>
            
             </ul>
 
@@ -1413,7 +1418,151 @@
                 </div>
             </div>
 
+            <!-- TAB PANEL 7: BANNERS & SLIDER MANAGEMENT -->
+            <div class="tab-panel-section" id="tab-banners">
+                <div class="table-header-flex">
+                    <h3 class="table-title"><i class="fa-solid fa-images"></i> Banner & Slider Management ({{ count($newsBanners ?? []) }})</h3>
+                    <div>
+                        <button class="btn-action-pill primary-glow" onclick="openAdminModal('modalCreateBanner')">
+                            <i class="fa-solid fa-plus"></i> Create New Banner
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-table-card">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Banner ID</th>
+                                <th>Image Preview</th>
+                                <th>Title & Description</th>
+                                <th>Action Link / Meeting</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bannersTableBody">
+                            @forelse($newsBanners ?? [] as $b)
+                                <tr>
+                                    <td>#BNR-{{ $b->id }}</td>
+                                    <td>
+                                        @if(!empty($b->image_url))
+                                            <img src="{{ $b->image_url }}" alt="{{ $b->title }}" style="width: 70px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-glow);">
+                                        @else
+                                            <span style="font-size: 0.75rem; color: var(--text-muted);">No Image</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div style="font-weight: 800; color: var(--text-main); font-size: 0.95rem;">{{ $b->title }}</div>
+                                        @if(!empty($b->description))
+                                            <div style="font-size: 0.8rem; color: var(--text-muted);">{{ Str::limit($b->description, 60) }}</div>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if(!empty($b->meeting_uuid))
+                                            <span class="status-pill status-pending"><i class="fa-solid fa-video"></i> Meeting: {{ Str::limit($b->meeting_uuid, 12) }}</span>
+                                        @else
+                                            <span class="status-pill status-success"><i class="fa-solid fa-bullhorn"></i> News / Promo</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($b->is_active)
+                                            <span class="status-pill status-success"><i class="fa-solid fa-circle-check"></i> Active</span>
+                                        @else
+                                            <span class="status-pill status-failed"><i class="fa-solid fa-circle-xmark"></i> Disabled</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $b->created_at ? $b->created_at->format('d M Y') : 'N/A' }}</td>
+                                    <td>
+                                        <button class="action-btn-sm" onclick="toggleBannerStatus({{ $b->id }})">
+                                            <i class="fa-solid fa-power-off"></i> {{ $b->is_active ? 'Disable' : 'Enable' }}
+                                        </button>
+                                        <button class="action-btn-sm" style="color: var(--danger-red); border-color: rgba(239,68,68,0.3);" onclick="deleteBanner({{ $b->id }})">
+                                            <i class="fa-solid fa-trash"></i> Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted);">No custom banners created yet. Click "+ Create New Banner" to add one!</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </main>
+    </div>
+
+    <!-- MODAL: CREATE NEW BANNER -->
+    <div class="modal-backdrop" id="modalCreateBanner">
+        <div class="modal-box">
+            <button class="modal-close-btn" onclick="closeAdminModal('modalCreateBanner')"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="table-title" style="margin-bottom: 0.25rem;"><i class="fa-solid fa-plus-circle"></i> Create App Banner</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Upload an image or paste image link to feature in home app slider</p>
+
+            <form onsubmit="handleCreateBanner(event)" id="createBannerForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label class="form-label">Banner Title *</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-heading input-icon"></i>
+                        <input type="text" class="form-input" id="bannerTitle" name="title" placeholder="e.g. Special Offer / Executive Audio Masterclass" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description / Subtitle (Optional)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-align-left input-icon"></i>
+                        <input type="text" class="form-input" id="bannerDescription" name="description" placeholder="Brief tagline for the banner">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Upload Banner Image File</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-cloud-arrow-up input-icon"></i>
+                        <input type="file" class="form-input" id="bannerImageFile" name="image" accept="image/*">
+                    </div>
+                    <span style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">Upload JPG, PNG, WEBP file (Recommended size: 800x400)</span>
+                </div>
+
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; font-weight: 800; margin: 0.5rem 0;">--- OR ---</div>
+
+                <div class="form-group">
+                    <label class="form-label">Image Direct URL Link</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-link input-icon"></i>
+                        <input type="url" class="form-input" id="bannerImageUrl" name="image_url" placeholder="https://example.com/images/banner.jpg">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Link to Audio Meeting (Optional)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-video input-icon"></i>
+                        <select class="form-select" id="bannerMeetingUuid" name="meeting_uuid">
+                            <option value="">None (Pure News / Announcement Banner)</option>
+                            @foreach($meetings ?? [] as $m)
+                                <option value="{{ $m->uuid }}">Meeting: {{ $m->title }} (by {{ $m->host->name ?? 'Host' }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <span style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">Selecting a meeting will add a "Join Room" button directly on this slide</span>
+                </div>
+
+                <div class="form-group" style="flex-direction: row; align-items: center; justify-content: space-between; margin-top: 1rem;">
+                    <label class="form-label" style="margin: 0;">Publish Immediately</label>
+                    <input type="checkbox" id="bannerIsActive" name="is_active" value="1" checked style="width: 20px; height: 20px; cursor: pointer;">
+                </div>
+
+                <button type="submit" class="btn-login-submit" style="margin-top: 1.5rem;" id="btnSubmitBanner">
+                    <i class="fa-solid fa-check-circle"></i> Save & Publish Banner
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- MODAL: VIEW SPECIFIC USER PASSBOOK HISTORY -->
@@ -1696,6 +1845,7 @@
                 'recharges': 'Mobile Recharge History',
                 'dth': 'DTH Recharge History',
                 'bill': 'Bill Payment History',
+                'banners': 'App Banner & Slider Manager',
                 'passbook': 'Wallet & Passbook Ledger',
                 'reports': 'Custom Reports & CSV Export'
             };
@@ -1973,8 +2123,81 @@
             showToast('CSV Report Downloaded from Database!', 'success');
         }
 
-        function generateReportData() {
-            showToast('Report filtered by selected date range!', 'info');
+        function handleCreateBanner(e) {
+            e.preventDefault();
+            const form = document.getElementById('createBannerForm');
+            const formData = new FormData(form);
+            const btn = document.getElementById('btnSubmitBanner');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+            fetch('/master/create-banner', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Save & Publish Banner';
+                if(data.status === 'success') {
+                    showToast(data.message, 'success');
+                    closeAdminModal('modalCreateBanner');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showToast(data.message || 'Failed to create banner', 'error');
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Save & Publish Banner';
+                showToast('Network error saving banner', 'error');
+            });
+        }
+
+        function toggleBannerStatus(id) {
+            fetch('/master/toggle-banner', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ banner_id: id })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 800);
+                } else {
+                    showToast(data.message || 'Error updating status', 'error');
+                }
+            })
+            .catch(err => showToast('Network error updating banner status', 'error'));
+        }
+
+        function deleteBanner(id) {
+            if(!confirm('Are you sure you want to delete this banner?')) return;
+            fetch('/master/delete-banner', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ banner_id: id })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 800);
+                } else {
+                    showToast(data.message || 'Error deleting banner', 'error');
+                }
+            })
+            .catch(err => showToast('Network error deleting banner', 'error'));
         }
 
         function showToast(msg, type = 'info') {

@@ -19,4 +19,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 'SESSION_DESTROYED',
+                    'message' => 'Your login session was destroyed because your account logged in from another device.',
+                ], 401);
+            }
+        });
     })->create();

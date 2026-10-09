@@ -94,6 +94,7 @@ Route::get('/master', function (Request $request) {
     $billPayments = Recharge::with('user')->where('type', 3)->latest()->take(100)->get();
     $recharges = Recharge::with('user')->latest()->take(100)->get();
     $passbooks = Passbook::with('user')->latest()->take(100)->get();
+    $newsBanners = \App\Models\NewsBanner::latest()->get();
 
     return view('master', compact(
         'users',
@@ -114,8 +115,80 @@ Route::get('/master', function (Request $request) {
         'dthRecharges',
         'billPayments',
         'recharges',
-        'passbooks'
+        'passbooks',
+        'newsBanners'
     ));
+});
+
+// Master AJAX Endpoint: Create Banner
+Route::post('/master/create-banner', function (Request $request) {
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'image' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:5120',
+        'image_url' => 'nullable|string',
+        'meeting_uuid' => 'nullable|string',
+        'is_active' => 'nullable',
+    ]);
+
+    $imageUrl = $validated['image_url'] ?? null;
+
+    if ($request->hasFile('image')) {
+        $file = $request->file('image');
+        $filename = 'banner_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
+        $targetDir = public_path('uploads/banners');
+        if (! file_exists($targetDir)) {
+            mkdir($targetDir, 0777, true);
+        }
+        $file->move($targetDir, $filename);
+        $imageUrl = asset('uploads/banners/'.$filename);
+    }
+
+    $banner = \App\Models\NewsBanner::create([
+        'title' => $validated['title'],
+        'description' => $validated['description'] ?? null,
+        'image_url' => $imageUrl,
+        'meeting_uuid' => ! empty($validated['meeting_uuid']) ? $validated['meeting_uuid'] : null,
+        'action_type' => ! empty($validated['meeting_uuid']) ? 'meeting' : 'news',
+        'is_active' => $request->has('is_active') ? filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN) : true,
+    ]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => "Banner '{$banner->title}' created successfully!",
+        'data' => ['banner' => $banner],
+    ]);
+});
+
+// Master AJAX Endpoint: Toggle Banner Status
+Route::post('/master/toggle-banner', function (Request $request) {
+    $validated = $request->validate([
+        'banner_id' => 'required|integer|exists:news_banners,id',
+    ]);
+
+    $banner = \App\Models\NewsBanner::findOrFail($validated['banner_id']);
+    $banner->update(['is_active' => ! $banner->is_active]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Banner status updated to '.($banner->is_active ? 'Active' : 'Disabled'),
+        'data' => ['banner' => $banner],
+    ]);
+});
+
+// Master AJAX Endpoint: Delete Banner
+Route::post('/master/delete-banner', function (Request $request) {
+    $validated = $request->validate([
+        'banner_id' => 'required|integer|exists:news_banners,id',
+    ]);
+
+    $banner = \App\Models\NewsBanner::findOrFail($validated['banner_id']);
+    $banner->delete();
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Banner deleted successfully!',
+    ]);
 });
 
 // Master Session Login Endpoint

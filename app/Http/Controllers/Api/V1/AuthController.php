@@ -74,6 +74,7 @@ class AuthController extends Controller
         }
 
         $user = User::create($userData);
+        $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -112,6 +113,7 @@ class AuthController extends Controller
             'otp_expires_at' => null,
         ]);
 
+        $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -160,6 +162,8 @@ class AuthController extends Controller
             ]);
         }
 
+        // Single Device Login Enforcement: Revoke & destroy all previous device sessions
+        $user->tokens()->delete();
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

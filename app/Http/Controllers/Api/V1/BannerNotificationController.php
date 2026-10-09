@@ -18,31 +18,82 @@ class BannerNotificationController extends Controller
      */
     public function getBanners(Request $request): JsonResponse
     {
-        // 1. Fetch active custom news banners
+        // 1. Fetch active custom news/image banners uploaded by admin
         $newsBanners = NewsBanner::where('is_active', true)->latest()->get();
 
-        // 2. Fetch active/started/scheduled meetings to slide as meeting banners
-        $activeMeetings = Meeting::whereIn('status', ['active', 'started', 'scheduled'])
-            ->with(['host:id,name,email', 'participants'])
-            ->latest()
-            ->take(10)
-            ->get();
-
         $slides = [];
+        $newsMeetingUuids = [];
+        $user = $request->user();
 
-        // Add news banners
+        // Add admin uploaded news & image banners
         foreach ($newsBanners as $b) {
+            $type = 'news';
+            $price = 0.0;
+            $hostName = null;
+            $hostId = null;
+            $status = null;
+            $isHostJoined = false;
+            $alreadyPaid = false;
+            $startsAt = null;
+
+            if ($b->meeting_uuid) {
+                $newsMeetingUuids[] = $b->meeting_uuid;
+                $m = Meeting::where('uuid', $b->meeting_uuid)
+                    ->with(['host:id,name,email', 'participants'])
+                    ->first();
+
+                if ($m) {
+                    $type = 'meeting';
+                    $isHostJoined = $m->participants
+                        ->where('role', 'host')
+                        ->where('status', 'joined')
+                        ->isNotEmpty();
+
+                    $isMeetingStarted = $m->status === 'active' || $m->status === 'started' || $isHostJoined;
+
+                    if ($user) {
+                        $hasPaidPassbook = Passbook::where('user_id', $user->id)
+                            ->where('type', 'DR')
+                            ->where('details', 'LIKE', '%Meeting Entry Fee:%'.$m->title.'%')
+                            ->exists();
+
+                        $alreadyPaid = $hasPaidPassbook || $m->participants
+                            ->where('user_id', $user->id)
+                            ->whereIn('status', ['joined', 'approved', 'left'])
+                            ->isNotEmpty();
+                    }
+
+                    $price = (float) $m->price;
+                    $hostName = $m->host?->name ?? 'Host';
+                    $hostId = $m->host_id;
+                    $status = $isMeetingStarted ? 'active' : $m->status;
+                    $startsAt = $m->starts_at ? $m->starts_at->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s') : null;
+                }
+            }
+
             $slides[] = [
-                'type' => 'news',
+                'type' => $type,
                 'title' => $b->title,
                 'description' => $b->description ?? '',
                 'image_url' => $b->image_url,
                 'meeting_uuid' => $b->meeting_uuid,
-                'price' => 0.0,
+                'price' => $price,
+                'host_name' => $hostName,
+                'host_id' => $hostId,
+                'status' => $status,
+                'is_host_joined' => $isHostJoined,
+                'already_paid' => $alreadyPaid,
+                'starts_at' => $startsAt,
             ];
         }
 
-        $user = $request->user();
+        // 2. Fetch active/started/scheduled meetings to slide as meeting banners (excluding ones already added via admin banners)
+        $activeMeetings = Meeting::whereIn('status', ['active', 'started', 'scheduled'])
+            ->whereNotIn('uuid', $newsMeetingUuids)
+            ->with(['host:id,name,email', 'participants'])
+            ->latest()
+            ->take(10)
+            ->get();
 
         // Add meeting banners
         foreach ($activeMeetings as $m) {

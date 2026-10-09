@@ -99,6 +99,7 @@ class SocialAuthController extends Controller
             ]);
         }
 
+        $user->tokens()->delete();
         $token = $user->createToken('social_token')->plainTextToken;
 
         return response()->json([

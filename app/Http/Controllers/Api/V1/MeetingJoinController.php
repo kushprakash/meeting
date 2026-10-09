@@ -92,6 +92,23 @@ class MeetingJoinController extends Controller
             ]);
         }
 
+        // Rule Check: First time ONLY Host can join to start meeting!
+        // No participant can enter before the host starts/joins the meeting.
+        $isHostJoined = MeetingParticipant::where('meeting_id', $meeting->id)
+            ->where('role', 'host')
+            ->where('status', 'joined')
+            ->exists();
+
+        $isMeetingStarted = in_array($meeting->status, ['active', 'started']) || $isHostJoined;
+
+        if (! $isMeetingStarted) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'MEETING_NOT_STARTED',
+                'message' => 'Meeting Not Started. Please wait to Start Meeting',
+            ], 400);
+        }
+
         // Retrieve existing participant record for this user & meeting if exists
         $participant = MeetingParticipant::where('meeting_id', $meeting->id)
             ->where(function ($q) use ($user) {

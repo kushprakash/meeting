@@ -93,15 +93,14 @@ class MeetingJoinController extends Controller
         }
 
         // Rule Check: First time ONLY Host can join to start meeting!
-        // No participant can enter before the host starts/joins the meeting.
+        // No participant can enter or pay before the host actually enters the meeting room.
         $isHostJoined = MeetingParticipant::where('meeting_id', $meeting->id)
             ->where('role', 'host')
             ->where('status', 'joined')
+            ->whereNull('left_at')
             ->exists();
 
-        $isMeetingStarted = in_array($meeting->status, ['active', 'started']) || $isHostJoined;
-
-        if (! $isMeetingStarted) {
+        if (! $isHostJoined) {
             return response()->json([
                 'status' => 'error',
                 'code' => 'MEETING_NOT_STARTED',

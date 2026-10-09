@@ -47,9 +47,10 @@ class BannerNotificationController extends Controller
                     $isHostJoined = $m->participants
                         ->where('role', 'host')
                         ->where('status', 'joined')
+                        ->where('left_at', null)
                         ->isNotEmpty();
 
-                    $isMeetingStarted = $m->status === 'active' || $m->status === 'started' || $isHostJoined;
+                    $status = $isHostJoined ? 'active' : ($m->status === 'ended' ? 'ended' : 'scheduled');
 
                     if ($user) {
                         $hasPaidPassbook = Passbook::where('user_id', $user->id)
@@ -66,7 +67,6 @@ class BannerNotificationController extends Controller
                     $price = (float) $m->price;
                     $hostName = $m->host?->name ?? 'Host';
                     $hostId = $m->host_id;
-                    $status = $isMeetingStarted ? 'active' : $m->status;
                     $startsAt = $m->starts_at ? $m->starts_at->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s') : null;
                 }
             }
@@ -100,9 +100,10 @@ class BannerNotificationController extends Controller
             $isHostJoined = $m->participants
                 ->where('role', 'host')
                 ->where('status', 'joined')
+                ->where('left_at', null)
                 ->isNotEmpty();
 
-            $isMeetingStarted = $m->status === 'active' || $m->status === 'started' || $isHostJoined;
+            $status = $isHostJoined ? 'active' : ($m->status === 'ended' ? 'ended' : 'scheduled');
 
             $alreadyPaid = false;
             if ($user) {
@@ -126,7 +127,7 @@ class BannerNotificationController extends Controller
                 'price' => (float) $m->price,
                 'host_name' => $m->host?->name ?? 'Host',
                 'host_id' => $m->host_id,
-                'status' => $isMeetingStarted ? 'active' : $m->status,
+                'status' => $status,
                 'is_host_joined' => $isHostJoined,
                 'already_paid' => $alreadyPaid,
                 'starts_at' => $m->starts_at ? $m->starts_at->setTimezone('Asia/Kolkata')->format('Y-m-d H:i:s') : null,

@@ -77,7 +77,7 @@ class MeetingController extends Controller
             'allow_video' => $validated['allow_video'] ?? true,
             'allow_screen_share' => $validated['allow_screen_share'] ?? true,
             'allow_chat' => $validated['allow_chat'] ?? true,
-            'status' => 'active',
+            'status' => 'scheduled',
         ]);
 
         // Add Host as participant with status 'approved' and role 'host'
@@ -263,35 +263,10 @@ class MeetingController extends Controller
             ->with('user:id,name,email')
             ->get();
 
-        // Ensure Host participant is always present in active_participants
+        // Check if Host has joined the room
         $hasHost = $activeParticipants->contains(function ($p) use ($meeting) {
-            return $p->role === 'host' || $p->user_id === $meeting->host_id;
+            return ($p->role === 'host' || $p->user_id === $meeting->host_id) && $p->status === 'joined' && $p->left_at === null;
         });
-
-        if (! $hasHost && $meeting->host) {
-            $hostParticipant = MeetingParticipant::firstOrCreate(
-                [
-                    'meeting_id' => $meeting->id,
-                    'user_id' => $meeting->host_id,
-                ],
-                [
-                    'email' => strtolower($meeting->host->email),
-                    'role' => 'host',
-                    'status' => 'joined',
-                    'approved_at' => now(),
-                    'joined_at' => now(),
-                ]
-            );
-
-            if ($hostParticipant->status !== 'joined' || $hostParticipant->left_at !== null) {
-                $hostParticipant->update([
-                    'status' => 'joined',
-                    'left_at' => null,
-                ]);
-            }
-            $hostParticipant->load('user:id,name,email');
-            $activeParticipants->prepend($hostParticipant);
-        }
 
         // Pending join requests for host - Always fetch if user is Host
         $pendingRequests = [];
